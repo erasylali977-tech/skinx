@@ -33,19 +33,24 @@ export function SignUpForm() {
         router.push("/profile");
         router.refresh();
       } else {
+        // Create user server-side with email auto-confirmed, then sign in.
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, full_name: name }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || "Sign-up failed");
+        }
         const supabase = createClient();
-        const { data, error } = await supabase.auth.signUp({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: { data: { full_name: name } },
         });
-        if (error) throw error;
-        if (data.session) {
-          router.push("/profile");
-          router.refresh();
-        } else {
-          setInfo("Check your email to confirm your account, then sign in.");
-        }
+        if (signInError) throw signInError;
+        router.push("/home");
+        router.refresh();
       }
     } catch (err: any) {
       setError(err?.message ?? "Sign-up failed");
