@@ -1,0 +1,93 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { skinAnalyzer } from "@/lib/ai/skinAnalyzer";
+import { MOCK, mockInsertScan, mockListScans } from "@/lib/mock";
+import { getCurrentUser } from "@/lib/auth";
+import type { Scan } from "@/lib/types";
+
+export const runtime = "nodejs";
+
+export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const form = await request.formData();
+  const file = form.get("image");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "image required" }, { status: 400 });
+  }
+  const bodyArea = (form.get("body_area") as string | null) || null;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+
+  const analysis = await skinAnalyzer.analyze({ bytes, bodyArea });
+  const scanId = crypto.randomUUID();
+
+  if (MOCK) {
+    const scan: Scan = {
+      id: scanId,
+      user_id: user.id,
+      image_path: `mock:${scanId}`,
+      body_area: bodyArea,
+      notes: analysis.notes,
+      risk_score: analysis.riskScore,
+      risk_level: analysis.riskLevel,
+      status: analysis.status,
+      abcde: analysis.abcde,
+      created_at: new Date().toISOString(),
+    };
+    mockInsertScan(scan, {
+      bytes,
+      contentType: file.type || "image/jpeg",
+    });
+    return NextResponse.json({ id: scanId, ...analysis });
+  }
+
+  const supabase = createClient();
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${user.id}/${scanId}.${ext}`;
+  const upload = await supabase.storage
+    .from("scans")
+    .upload(path, bytes, {
+      contentType: file.type || "image/jpeg",
+      upsert: false,
+    });
+  if (upload.error) {
+    return NextResponse.json(
+      { error: `Storage: ${upload.error.message}` },
+      { status: 500 },
+    );
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("scans")
+    .insert({
+      id: scanId,
+      user_id: user.id,
+      image_path: path,
+      body_area: bodyArea,
+      notes: analysis.notes,
+      risk_score: analysis.riskScore,
+      risk_level: analysis.riskLevel,
+      status: analysis.status,
+      abcde: analysis.abcde,
+    })
+    .select("id")
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ id: inserted.id, ...analysis });
+}
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (MOCK) return NextResponse.json({ scans: mockListScans(user.id) });
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("scans")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  return NextResponse.json({ scans: data ?? [] });
+}
