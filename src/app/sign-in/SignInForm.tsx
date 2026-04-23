@@ -14,7 +14,9 @@ export function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    params.get("error") ?? null,
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,8 +41,7 @@ export function SignInForm() {
         });
         if (error) throw error;
       }
-      router.push(next);
-      router.refresh();
+      router.replace(next);
     } catch (err: any) {
       setError(err?.message ?? "Sign-in failed");
     } finally {
@@ -58,7 +59,13 @@ export function SignInForm() {
     setLoading(true);
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      // Use NEXT_PUBLIC_APP_URL so the redirect URL is always the canonical
+      // domain (not window.location.origin which would be localhost in dev).
+      // This URL must be in Supabase → Authentication → URL Configuration → Redirect URLs.
+      const origin =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+        window.location.origin;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },
@@ -135,6 +142,14 @@ export function SignInForm() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
           />
+          <div className="text-right">
+            <a
+              href="/forgot-password"
+              className="text-xs text-primary font-semibold underline-offset-2"
+            >
+              Forgot password?
+            </a>
+          </div>
           {error ? (
             <p className="text-error text-sm font-medium text-center">
               {error}

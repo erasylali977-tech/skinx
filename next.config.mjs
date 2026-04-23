@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
+const BUILD_ID = Date.now().toString();
+
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },

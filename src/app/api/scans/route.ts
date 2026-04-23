@@ -7,6 +7,16 @@ import type { Scan } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,6 +30,21 @@ export async function POST(request: NextRequest) {
 
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
+
+  if (bytes.length > MAX_BYTES) {
+    return NextResponse.json(
+      { error: "Image too large. Maximum size is 10 MB." },
+      { status: 413 },
+    );
+  }
+
+  const mimeType = file.type?.toLowerCase();
+  if (!ALLOWED_MIME[mimeType]) {
+    return NextResponse.json(
+      { error: "Unsupported file type. Please upload a JPEG, PNG, WebP or HEIC image." },
+      { status: 415 },
+    );
+  }
 
   const analysis = await skinAnalyzer.analyze({ bytes, bodyArea });
   const scanId = crypto.randomUUID();
@@ -44,50 +69,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: scanId, ...analysis });
   }
 
-  const supabase = createClient();
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${user.id}/${scanId}.${ext}`;
-  const upload = await supabase.storage
-    .from("scans")
-    .upload(path, bytes, {
-      contentType: file.type || "image/jpeg",
-      upsert: false,
-    });
-  if (upload.error) {
-    return NextResponse.json(
-      { error: `Storage: ${upload.error.message}` },
-      { status: 500 },
-    );
-  }
+  try {
+    const supabase = createClient();
+    const ext = ALLOWED_MIME[mimeType] ?? "jpg";
+    const path = `${user.id}/${scanId}.${ext}`;
+    const upload = await supabase.storage
+      .from("scans")
+      .upload(path, bytes, {
+        contentType: file.type || "image/jpeg",
+        upsert: false,
+      });
+    if (upload.error) {
+      return NextResponse.json(
+        { error: `Storage: ${upload.error.message}` },
+        { status: 500 },
+      );
+    }
 
-  const { data: inserted, error } = await supabase
-    .from("scans")
-    .insert({
-      id: scanId,
-      user_id: user.id,
-      image_path: path,
-      body_area: bodyArea,
-      notes: analysis.notes,
-      risk_score: analysis.riskScore,
-      risk_level: analysis.riskLevel,
-      status: analysis.status,
-      abcde: analysis.abcde,
-    })
-    .select("id")
-    .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ id: inserted.id, ...analysis });
+    const { data: inserted, error } = await supabase
+      .from("scans")
+      .insert({
+        id: scanId,
+        user_id: user.id,
+        image_path: path,
+        body_area: bodyArea,
+        notes: analysis.notes,
+        risk_score: analysis.riskScore,
+        risk_level: analysis.riskLevel,
+        status: analysis.status,
+        abcde: analysis.abcde,
+      })
+      .select("id")
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ id: inserted.id, ...analysis });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
+  }
 }
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (MOCK) return NextResponse.json({ scans: mockListScans(user.id) });
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("scans")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-  return NextResponse.json({ scans: data ?? [] });
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("scans")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    return NextResponse.json({ scans: data ?? [] });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
+  }
 }

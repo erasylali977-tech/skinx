@@ -1,19 +1,14 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Icon } from "@/components/Icon";
 
 export function SignOutButton() {
   const router = useRouter();
   async function signOut() {
-    const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
-    if (MOCK) {
-      await fetch("/api/auth/signout", { method: "POST" });
-    } else {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-    }
-    router.push("/welcome");
+    // Always go through the server route so both mock cookie and
+    // Supabase SSR auth cookies get cleared reliably.
+    await fetch("/api/auth/signout", { method: "POST" });
+    router.replace("/welcome");
     router.refresh();
   }
   return (

@@ -2,13 +2,24 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createAdminBase } from "@supabase/supabase-js";
 import { MOCK, mockSignUp } from "@/lib/mock";
 import { MOCK_COOKIE } from "@/lib/auth";
+import { getSupabaseServiceEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
+
+function friendlyError(msg: string): string {
+  if (/already registered|already exists|duplicate/i.test(msg))
+    return "An account with this email already exists. Please sign in instead.";
+  if (/password/i.test(msg))
+    return "Password must be at least 6 characters.";
+  if (/invalid email/i.test(msg))
+    return "Please enter a valid email address.";
+  return msg || "Sign-up failed. Please try again.";
+}
 
 export async function POST(req: NextRequest) {
   const { email, password, full_name } = await req.json().catch(() => ({}));
   if (!email || !password) {
-    return NextResponse.json({ error: "email and password required" }, { status: 400 });
+    return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
 
   if (MOCK) {
@@ -23,22 +34,19 @@ export async function POST(req: NextRequest) {
       });
       return res;
     } catch (e: any) {
-      return NextResponse.json({ error: e?.message ?? "Sign-up failed" }, { status: 400 });
+      return NextResponse.json({ error: friendlyError(e?.message) }, { status: 400 });
     }
   }
 
-  // Real Supabase: create user with email auto-confirmed via Admin API,
-  // so the user doesn't need to wait for a confirmation email.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
+  const env = getSupabaseServiceEnv();
+  if (!env) {
     return NextResponse.json(
       { error: "Server misconfigured: missing Supabase env vars" },
       { status: 500 },
     );
   }
 
-  const admin = createAdminBase(url, serviceKey, {
+  const admin = createAdminBase(env.url, env.serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
@@ -51,9 +59,19 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json(
-      { error: error.message || "Sign-up failed" },
+      { error: friendlyError(error.message) },
       { status: 400 },
     );
+  }
+
+  // Persist full_name to the profiles table (the trigger only creates the row
+  // with id, leaving full_name NULL).
+  if (full_name && data.user) {
+    await admin
+      .from("profiles")
+      .update({ full_name: full_name.trim() })
+      .eq("id", data.user.id)
+      .then(() => {}); // fire-and-forget, non-fatal
   }
 
   return NextResponse.json({ user: data.user });

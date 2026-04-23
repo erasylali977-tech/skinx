@@ -13,11 +13,23 @@ export async function GET(request: NextRequest) {
   const oauthError =
     url.searchParams.get("error_description") || url.searchParams.get("error");
 
-  const redirectToSignIn = (msg: string) => {
-    const signIn = new URL("/sign-in", url);
-    signIn.searchParams.set("error", msg);
-    return NextResponse.redirect(signIn);
-  };
+  // Behind nginx, request.nextUrl.origin is http://localhost:3000 (internal).
+  // Use NEXT_PUBLIC_APP_URL if set, otherwise reconstruct from X-Forwarded headers
+  // so the browser is redirected to the real public origin (e.g. https://skinx.fit).
+  const publicOrigin =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    (() => {
+      const proto =
+        request.headers.get("x-forwarded-proto") ??
+        url.protocol.replace(":", "");
+      const host = request.headers.get("host") ?? url.host;
+      return `${proto}://${host}`;
+    })();
+
+  const redirectToSignIn = (msg: string) =>
+    NextResponse.redirect(
+      `${publicOrigin}/sign-in?error=${encodeURIComponent(msg)}`,
+    );
 
   try {
     if (oauthError) return redirectToSignIn(oauthError);
@@ -36,10 +48,18 @@ export async function GET(request: NextRequest) {
       await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) {
       console.error("[auth/callback] exchangeCodeForSession:", exchangeError);
-      return redirectToSignIn(exchangeError.message);
+      // "invalid flow state" = PKCE verifier cookie lost, usually means:
+      // 1. This callback URL is not in Supabase → Auth → URL Configuration → Redirect URLs
+      // 2. The user opened the link in a different browser / incognito tab
+      const isFlowState = exchangeError.message.toLowerCase().includes("flow state");
+      const userMessage = isFlowState
+        ? "Sign-in session expired. Please try signing in again."
+        : exchangeError.message;
+      return redirectToSignIn(userMessage);
     }
 
-    return NextResponse.redirect(new URL(next, url));
+    const destination = next.startsWith("/") ? `${publicOrigin}${next}` : next;
+    return NextResponse.redirect(destination);
   } catch (e: any) {
     console.error("[auth/callback] Unhandled:", e);
     return redirectToSignIn(e?.message || "Auth callback failed");

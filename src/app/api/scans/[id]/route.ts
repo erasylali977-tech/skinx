@@ -14,15 +14,19 @@ export async function GET(
     if (!scan) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(scan);
   }
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("scans")
-    .select("*")
-    .eq("id", params.id)
-    .maybeSingle();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(data);
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("scans")
+      .select("*")
+      .eq("id", params.id)
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(data);
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
+  }
 }
 
 export async function DELETE(
@@ -38,16 +42,20 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   }
 
-  const supabase = createClient();
-  const { data: scan } = await supabase
-    .from("scans")
-    .select("image_path")
-    .eq("id", params.id)
-    .maybeSingle();
-  if (scan?.image_path) {
-    await supabase.storage.from("scans").remove([scan.image_path]);
+  try {
+    const supabase = createClient();
+    const { data: scan } = await supabase
+      .from("scans")
+      .select("image_path")
+      .eq("id", params.id)
+      .maybeSingle();
+    if (scan?.image_path) {
+      await supabase.storage.from("scans").remove([scan.image_path]);
+    }
+    const { error } = await supabase.from("scans").delete().eq("id", params.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
   }
-  const { error } = await supabase.from("scans").delete().eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
 }

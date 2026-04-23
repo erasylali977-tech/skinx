@@ -1,5 +1,6 @@
 /* Minimal SkinX service worker: offline fallback + runtime cache for static assets. */
-const CACHE = "skinx-v1";
+const BUILD = new URLSearchParams(self.location.search).get("v") || "1";
+const CACHE = `skinx-${BUILD}`;
 const OFFLINE_URL = "/welcome";
 const PRECACHE = ["/welcome", "/manifest.webmanifest"];
 

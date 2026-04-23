@@ -30,8 +30,7 @@ export function SignUpForm() {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error || "Sign-up failed");
         }
-        router.push("/profile");
-        router.refresh();
+        router.replace("/profile");
       } else {
         // Create user server-side with email auto-confirmed, then sign in.
         const res = await fetch("/api/auth/signup", {
@@ -49,8 +48,7 @@ export function SignUpForm() {
           password,
         });
         if (signInError) throw signInError;
-        router.push("/home");
-        router.refresh();
+        router.replace("/home");
       }
     } catch (err: any) {
       setError(err?.message ?? "Sign-up failed");
