@@ -11,7 +11,7 @@ export function TermsContent() {
       <p className="text-on-surface-variant text-sm">{t.terms.lastUpdated}</p>
 
       <Section title="1. Acceptance of Terms">
-        By downloading, installing, or using SkinX ("App"), you agree to be bound by these Terms of Use. If you do not agree, do not use the App.
+        By downloading, installing, or using SkinX (&ldquo;App&rdquo;), you agree to be bound by these Terms of Use. If you do not agree, do not use the App.
       </Section>
 
       <Section title="1. Принятие условий" hidden={t.common.appName === "SkinX" && false}>
