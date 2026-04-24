@@ -180,3 +180,17 @@ body {
 .animate-scan-line {
   animation: scan-line 2.4s ease-in-out infinite;
 }
+
+@keyframes scan-sweep {
+  0%   { top: 0%;               opacity: 0.3; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% - 2px); opacity: 0.3; }
+}
+.animate-scan-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  animation: scan-sweep 2.4s ease-in-out infinite alternate;
+}
