@@ -8,6 +8,7 @@ import { formatDateTime } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import { MOCK, mockGetProfile } from "@/lib/mock";
 import { createClient } from "@/lib/supabase/server";
+import { DisclaimerModal } from "@/components/DisclaimerModal";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-28">
+      <DisclaimerModal />
       <AppHeader />
       <main className="pt-24 px-6 max-w-md mx-auto md:max-w-4xl">
         <section className="mb-10">
