@@ -118,7 +118,7 @@ export function ScanClient() {
             </button>
           ) : (
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center text-white/40">
-              <Icon name="info_outline" />
+              <Icon name="info" />
             </div>
           )}
         </header>
@@ -192,12 +192,12 @@ export function ScanClient() {
             {/* Gallery picker */}
             <button
               onClick={openGallery}
-              className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform w-[72px]"
             >
-              <div className="w-12 h-12 rounded-2xl bg-white/8 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white/[0.08] flex items-center justify-center">
                 <Icon name="folder_open" className="text-white/60" />
               </div>
-              <span className="text-white/40 text-[10px] font-medium">{t.scan.chooseFromLibrary}</span>
+              <span className="text-white/40 text-[10px] font-medium text-center leading-tight">{t.scan.chooseFromLibrary}</span>
             </button>
 
             {/* Primary shutter / submit button */}
@@ -222,16 +222,20 @@ export function ScanClient() {
               </div>
             </button>
 
-            {/* Open camera button */}
-            <button
-              onClick={() => setCameraOpen(true)}
-              className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-white/8 flex items-center justify-center">
-                <Icon name="photo_camera" filled className="text-white/60" />
-              </div>
-              <span className="text-white/40 text-[10px] font-medium">{t.scan.openCamera}</span>
-            </button>
+            {/* Retake / placeholder — mirrors gallery button for symmetry */}
+            {file ? (
+              <button
+                onClick={retake}
+                className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform w-[72px]"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.08] flex items-center justify-center">
+                  <Icon name="refresh" className="text-white/60" />
+                </div>
+                <span className="text-white/40 text-[10px] font-medium text-center leading-tight">Retake</span>
+              </button>
+            ) : (
+              <div className="w-[72px]" />
+            )}
           </div>
 
           {error ? (

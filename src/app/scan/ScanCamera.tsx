@@ -90,6 +90,9 @@ export function ScanCamera({ onCapture, onClose }: Props) {
   const [det,    setDet]    = useState({ skinPct: 0, brightness: 128, sharpness: 50 });
 
   // ── Open camera stream ─────────────────────────────────────────────────
+  // NOTE: we set perm("granted") BEFORE touching videoRef, because the
+  // <video> element only mounts after that state change. Stream attachment
+  // happens in the useEffect below once the element is in the DOM.
   const startStream = useCallback(async (face: "environment" | "user") => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setPerm("error");
@@ -107,16 +110,23 @@ export function ScanCamera({ onCapture, onClose }: Props) {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setPerm("granted");
+      setPerm("granted"); // triggers re-render → <video> appears in DOM
     } catch (e: unknown) {
       const name = (e as { name?: string })?.name ?? "";
       setPerm(name === "NotAllowedError" || name === "PermissionDeniedError" ? "denied" : "error");
     }
   }, []);
+
+  // ── Attach stream once <video> element is mounted ─────────────────────
+  // Runs every time perm transitions to "granted" (initial open + flip)
+  useEffect(() => {
+    if (perm !== "granted") return;
+    const video  = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  }, [perm]);
 
   // ── Detection loop at ~150 ms intervals ───────────────────────────────
   useEffect(() => {
