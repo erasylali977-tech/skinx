@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
+import { useI18n } from "@/lib/i18n/context";
 
 const STORAGE_KEY = "skinx_disclaimer_accepted";
 
 export function DisclaimerModal() {
   const [visible, setVisible] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!localStorage.getItem(STORAGE_KEY)) {
@@ -29,25 +31,22 @@ export function DisclaimerModal() {
             <Icon name="health_and_safety" className="text-error text-2xl" />
           </div>
           <h2 className="text-lg font-bold text-on-surface leading-tight">
-            Medical Disclaimer
+            {t.disclaimer.title}
           </h2>
         </div>
 
         <p className="text-on-surface-variant text-sm leading-relaxed mb-3">
-          SkinX is an <strong className="text-on-surface">informational tool only</strong> and is{" "}
-          <strong className="text-on-surface">not a medical device</strong>. AI analysis results
-          are not a substitute for professional medical advice, diagnosis, or treatment.
+          {t.disclaimer.body1}
         </p>
         <p className="text-on-surface-variant text-sm leading-relaxed mb-6">
-          Always consult a qualified dermatologist or healthcare provider about any skin concerns,
-          especially if you notice rapid changes in size, shape, or colour of a mole or skin spot.
+          {t.disclaimer.body2}
         </p>
 
         <button
           onClick={accept}
           className="w-full bg-primary-gradient text-white font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
         >
-          I understand
+          {t.disclaimer.accept}
         </button>
       </div>
     </div>

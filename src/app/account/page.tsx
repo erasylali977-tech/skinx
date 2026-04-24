@@ -61,6 +61,17 @@ export default async function AccountPage() {
           </Link>
         </section>
 
+        <section className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-ambient">
+          <Link href="/terms" className="flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors border-b border-outline-variant/30">
+            <span className="font-medium">Terms of Use</span>
+            <Icon name="chevron_right" className="text-on-surface-variant" />
+          </Link>
+          <Link href="/privacy" className="flex items-center justify-between px-6 py-4 hover:bg-surface-container-low transition-colors">
+            <span className="font-medium">Privacy Policy</span>
+            <Icon name="chevron_right" className="text-on-surface-variant" />
+          </Link>
+        </section>
+
         <SignOutButton />
       </main>
       <BottomNav />

@@ -3,15 +3,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
-
-const items = [
-  { href: "/home", label: "Home", icon: "home" },
-  { href: "/dashboard", label: "Dashboard", icon: "analytics" },
-  { href: "/account", label: "Profile", icon: "person" },
-];
+import { useI18n } from "@/lib/i18n/context";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
+  const items = [
+    { href: "/home", label: t.nav.home, icon: "home" },
+    { href: "/dashboard", label: t.nav.dashboard, icon: "analytics" },
+    { href: "/account", label: t.nav.account, icon: "person" },
+  ];
   return (
     <nav className="fixed bottom-0 left-0 w-full z-40 rounded-t-[1.5rem] bg-surface-container-lowest shadow-ambient-up flex justify-around items-center pb-8 pt-4 px-4">
       {items.map((item) => {
