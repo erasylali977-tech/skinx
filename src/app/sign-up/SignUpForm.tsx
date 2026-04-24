@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/context";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
 
 export function SignUpForm() {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -28,7 +30,7 @@ export function SignUpForm() {
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || "Sign-up failed");
+          throw new Error(j.error || t.common.error);
         }
         router.replace("/profile");
       } else {
@@ -40,7 +42,7 @@ export function SignUpForm() {
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || "Sign-up failed");
+          throw new Error(j.error || t.common.error);
         }
         const supabase = createClient();
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -51,7 +53,7 @@ export function SignUpForm() {
         router.replace("/home");
       }
     } catch (err: any) {
-      setError(err?.message ?? "Sign-up failed");
+      setError(err?.message ?? t.common.error);
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ export function SignUpForm() {
     <form onSubmit={onSubmit} className="w-full space-y-3">
       <input
         type="text"
-        placeholder="Full name (optional)"
+        placeholder={t.signUp.namePlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
@@ -78,7 +80,7 @@ export function SignUpForm() {
         type="password"
         required
         minLength={6}
-        placeholder="Password (min 6 chars)"
+        placeholder={t.signUp.passwordHint}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
@@ -94,7 +96,7 @@ export function SignUpForm() {
         disabled={loading}
         className="w-full py-4 rounded-full bg-primary-gradient text-on-primary font-bold text-lg shadow-primary-glow active:scale-[0.98] disabled:opacity-60"
       >
-        {loading ? "Creating account…" : "Create Account"}
+        {loading ? t.signUp.creating : t.signUp.createBtn}
       </button>
     </form>
   );

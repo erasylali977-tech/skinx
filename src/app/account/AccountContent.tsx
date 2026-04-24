@@ -16,8 +16,36 @@ type Props = {
   } | null;
 };
 
+const SEX_MAP: Record<string, "male" | "female" | "other"> = {
+  Male: "male",
+  Female: "female",
+  Other: "other",
+};
+
+const RISK_MAP: Record<string, "familyHistory" | "manyMoles" | "sunExposure" | "previousCancer" | "tanningBeds"> = {
+  "Family history": "familyHistory",
+  "Many moles": "manyMoles",
+  "Frequent sun exposure": "sunExposure",
+  "Previous skin cancer": "previousCancer",
+  "Use tanning beds": "tanningBeds",
+};
+
 export function AccountContent({ email, profile }: Props) {
   const { t } = useI18n();
+
+  function translateSex(val: string | null | undefined): string {
+    if (!val) return "—";
+    const key = SEX_MAP[val];
+    return key ? (t.profile[key] as string) : val;
+  }
+
+  function translateRisks(vals: string[] | null | undefined): string {
+    if (!vals || vals.length === 0) return t.account.none;
+    return vals.map((v) => {
+      const key = RISK_MAP[v];
+      return key ? (t.profile.risks[key] as string) : v;
+    }).join(", ");
+  }
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-32 pt-24">
@@ -32,19 +60,12 @@ export function AccountContent({ email, profile }: Props) {
 
         <section className="bg-surface-container-lowest rounded-xl p-6 space-y-4 shadow-ambient">
           <Row label={t.account.ageRange} value={profile?.age_range ?? "—"} />
-          <Row label={t.account.sexLabel} value={profile?.sex ?? "—"} />
+          <Row label={t.account.sexLabel} value={translateSex(profile?.sex)} />
           <Row
             label={t.account.fitzpatrick}
             value={profile?.skin_type ? `${t.profile.type} ${profile.skin_type}` : "—"}
           />
-          <Row
-            label={t.account.riskFactorsLabel}
-            value={
-              profile?.risk_factors && profile.risk_factors.length
-                ? profile.risk_factors.join(", ")
-                : t.account.none
-            }
-          />
+          <Row label={t.account.riskFactorsLabel} value={translateRisks(profile?.risk_factors)} />
           <Link
             href="/profile"
             className="inline-flex items-center gap-2 text-primary font-semibold mt-2"

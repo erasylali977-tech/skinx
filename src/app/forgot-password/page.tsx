@@ -1,11 +1,12 @@
+"use client";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
-
-export const dynamic = "force-dynamic";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   return (
     <div className="bg-white text-gray-900 flex flex-col min-h-screen">
       <main className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 w-full max-w-md mx-auto">
@@ -15,10 +16,10 @@ export default function ForgotPasswordPage() {
           </div>
           <div className="text-center space-y-3">
             <h1 className="text-3xl font-extrabold tracking-tight text-primary">
-              Reset Password
+              {t.forgotPassword.title}
             </h1>
             <p className="text-base text-gray-500 font-medium">
-              Enter your email and we&apos;ll send you a reset link.
+              {t.forgotPassword.subtitle}
             </p>
           </div>
         </div>
@@ -30,7 +31,7 @@ export default function ForgotPasswordPage() {
             href="/sign-in"
             className="text-sm text-primary font-semibold underline-offset-2"
           >
-            ← Back to Sign In
+            {t.forgotPassword.backToSignIn}
           </Link>
         </div>
       </main>

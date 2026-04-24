@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ForgotPasswordForm() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -23,7 +25,7 @@ export function ForgotPasswordForm() {
       if (resetError) throw resetError;
       setSent(true);
     } catch (err: any) {
-      setError(err?.message ?? "Could not send reset email. Please try again.");
+      setError(err?.message ?? t.common.error);
     } finally {
       setLoading(false);
     }
@@ -37,11 +39,11 @@ export function ForgotPasswordForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-gray-800 font-semibold text-lg">Check your inbox</p>
+        <p className="text-gray-800 font-semibold text-lg">{t.forgotPassword.checkInbox}</p>
         <p className="text-gray-500 text-sm">
-          We sent a password reset link to <strong>{email}</strong>.
+          {t.forgotPassword.sentLink} <strong>{email}</strong>.
           <br />
-          The link expires in 1 hour.
+          {t.forgotPassword.linkExpires}
         </p>
       </div>
     );
@@ -65,7 +67,7 @@ export function ForgotPasswordForm() {
         disabled={loading}
         className="w-full py-4 rounded-full bg-primary-gradient text-on-primary font-bold text-lg shadow-primary-glow active:scale-[0.98] disabled:opacity-60"
       >
-        {loading ? "Sending…" : "Send Reset Link"}
+        {loading ? t.forgotPassword.sending : t.forgotPassword.sendBtn}
       </button>
     </form>
   );

@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ResetPasswordForm() {
   const router = useRouter();
+  const { t } = useI18n();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,11 +17,11 @@ export function ResetPasswordForm() {
     e.preventDefault();
     setError(null);
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError(t.resetPassword.passwordsDontMatch);
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t.resetPassword.tooShort);
       return;
     }
     setLoading(true);
@@ -30,7 +32,7 @@ export function ResetPasswordForm() {
       setDone(true);
       setTimeout(() => router.replace("/home"), 2000);
     } catch (err: any) {
-      setError(err?.message ?? "Could not update password. Please request a new link.");
+      setError(err?.message ?? t.common.error);
     } finally {
       setLoading(false);
     }
@@ -44,8 +46,8 @@ export function ResetPasswordForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-gray-800 font-semibold text-lg">Password updated!</p>
-        <p className="text-gray-500 text-sm">Redirecting to your dashboard…</p>
+        <p className="text-gray-800 font-semibold text-lg">{t.resetPassword.updated}</p>
+        <p className="text-gray-500 text-sm">{t.resetPassword.redirecting}</p>
       </div>
     );
   }
@@ -56,7 +58,7 @@ export function ResetPasswordForm() {
         type="password"
         required
         minLength={6}
-        placeholder="New password (min 6 chars)"
+        placeholder={t.resetPassword.newPassword}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
@@ -65,7 +67,7 @@ export function ResetPasswordForm() {
         type="password"
         required
         minLength={6}
-        placeholder="Confirm new password"
+        placeholder={t.resetPassword.confirmPassword}
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
@@ -78,7 +80,7 @@ export function ResetPasswordForm() {
         disabled={loading}
         className="w-full py-4 rounded-full bg-primary-gradient text-on-primary font-bold text-lg shadow-primary-glow active:scale-[0.98] disabled:opacity-60"
       >
-        {loading ? "Updating…" : "Update Password"}
+        {loading ? t.resetPassword.updating : t.resetPassword.updateBtn}
       </button>
     </form>
   );
