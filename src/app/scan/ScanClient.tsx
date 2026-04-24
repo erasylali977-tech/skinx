@@ -3,9 +3,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ScanClient() {
   const router = useRouter();
+  const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -36,13 +38,13 @@ export function ScanClient() {
       const res = await fetch("/api/scans", { method: "POST", body: fd });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Upload failed");
+        throw new Error(j.error || t.scan.uploadFailed);
       }
       const j = await res.json();
       router.push(`/moles/${j.id}`);
       router.refresh();
     } catch (e: any) {
-      setError(e?.message ?? "Upload failed");
+      setError(e?.message ?? t.scan.uploadFailed);
     } finally {
       setUploading(false);
     }
@@ -89,11 +91,11 @@ export function ScanClient() {
           <div className="bg-surface-container-lowest/90 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-ambient">
             <Icon name="check_circle" className="text-[#10b981] text-sm" />
             <span className="text-sm font-medium text-on-surface">
-              {preview ? "Image ready" : "Perfect lighting"}
+              {preview ? t.scan.imageReady : t.scan.perfectLighting}
             </span>
           </div>
           <p className="text-white/90 text-sm text-center mt-4 drop-shadow-md max-w-xs">
-            Hold steady. Align the affected area within the frame.
+            {t.scan.holdSteady}
           </p>
         </div>
       </main>
@@ -112,7 +114,7 @@ export function ScanClient() {
 
         <input
           type="text"
-          placeholder="Body area (e.g. Left Forearm)"
+          placeholder={t.scan.bodyAreaPlaceholder}
           value={bodyArea}
           onChange={(e) => setBodyArea(e.target.value)}
           className="w-full px-4 py-3 rounded-xl bg-surface-container-low focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/30 focus:outline-none"
@@ -144,10 +146,10 @@ export function ScanClient() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-on-surface">
-                  Choose from Library
+                  {t.scan.chooseFromLibrary}
                 </h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">
-                  Upload an existing photo
+                  {t.scan.uploadExisting}
                 </p>
               </div>
             </div>

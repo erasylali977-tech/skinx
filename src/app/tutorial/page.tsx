@@ -3,29 +3,31 @@ import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
-
-const slides = [
-  {
-    title: "Find Good Light",
-    body: "For the most accurate scan, stand facing a window or use bright, even indoor lighting. Avoid harsh shadows.",
-    icon: "wb_sunny",
-    pill: "Natural Light Recommended",
-  },
-  {
-    title: "Stay Focused",
-    body: "Hold your device steady and keep the area of interest centered in the frame. Get close enough to see detail.",
-    icon: "center_focus_strong",
-    pill: "Frame the Spot",
-  },
-  {
-    title: "Track Progress",
-    body: "Repeat scans every few weeks. SkinX compares your images over time and flags changes automatically.",
-    icon: "timeline",
-    pill: "Consistency Wins",
-  },
-];
+import { useI18n } from "@/lib/i18n/context";
 
 export default function TutorialPage() {
+  const { t } = useI18n();
+
+  const slides = [
+    {
+      title: t.tutorial.slide1Title,
+      body: t.tutorial.slide1Body,
+      icon: "wb_sunny",
+      pill: t.tutorial.slide1Pill,
+    },
+    {
+      title: t.tutorial.slide2Title,
+      body: t.tutorial.slide2Body,
+      icon: "center_focus_strong",
+      pill: t.tutorial.slide2Pill,
+    },
+    {
+      title: t.tutorial.slide3Title,
+      body: t.tutorial.slide3Body,
+      icon: "timeline",
+      pill: t.tutorial.slide3Pill,
+    },
+  ];
   const scroller = useRef<HTMLDivElement | null>(null);
   const [idx, setIdx] = useState(0);
 
@@ -104,7 +106,7 @@ export default function TutorialPage() {
               onClick={goNext}
               className="w-full bg-primary-gradient text-on-primary font-bold text-lg py-4 px-8 rounded-full shadow-primary-glow hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <span>Continue</span>
+              <span>{t.common.continue}</span>
               <Icon name="arrow_forward" weight={600} />
             </button>
           ) : (
@@ -112,7 +114,7 @@ export default function TutorialPage() {
               href="/sign-up"
               className="w-full bg-primary-gradient text-on-primary font-bold text-lg py-4 px-8 rounded-full shadow-primary-glow hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <span>Get Started</span>
+              <span>{t.welcome.getStarted}</span>
               <Icon name="arrow_forward" weight={600} />
             </Link>
           )}
@@ -121,7 +123,7 @@ export default function TutorialPage() {
               href="/sign-in"
               className="text-on-surface-variant text-sm font-semibold hover:text-primary transition-colors"
             >
-              Skip Tutorial
+              {t.tutorial.skipTutorial}
             </Link>
           </div>
         </div>
