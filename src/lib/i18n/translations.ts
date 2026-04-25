@@ -185,6 +185,10 @@ export const translations = {
       blurry: "Blurry — hold steady",
       flipCamera: "Flip camera",
       analyzePhoto: "Analyze Photo",
+      selectZone: "Select Body Zone",
+      selectZoneHint: "Tap the area you want to scan",
+      male: "Male",
+      female: "Female",
     },
     moles: {
       spotTracker: "Spot Tracker",
@@ -419,6 +423,10 @@ export const translations = {
       blurry: "Размыто — держите устройство неподвижно",
       flipCamera: "Переключить камеру",
       analyzePhoto: "Анализировать фото",
+      selectZone: "Выберите зону тела",
+      selectZoneHint: "Нажмите на область, которую хотите сканировать",
+      male: "Мужской",
+      female: "Женский",
     },
     moles: {
       spotTracker: "Трекер зоны",
@@ -653,6 +661,10 @@ export const translations = {
       blurry: "Бұлдыр — құрылғыны тұрақты ұстаңыз",
       flipCamera: "Камераны ауыстыру",
       analyzePhoto: "Фотоны талдау",
+      selectZone: "Дене аймағын таңдаңыз",
+      selectZoneHint: "Сканерлеу керек аймақты басыңыз",
+      male: "Еркек",
+      female: "Әйел",
     },
     moles: {
       spotTracker: "Аймақ трекері",
