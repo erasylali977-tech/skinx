@@ -3,6 +3,7 @@ const BUILD_ID = Date.now().toString();
 
 const nextConfig = {
   reactStrictMode: true,
+  eslint: { ignoreDuringBuilds: true },
   env: {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,
   },

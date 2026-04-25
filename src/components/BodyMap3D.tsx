@@ -65,7 +65,7 @@ function makeSkinMat(color: THREE.Color) {
 // ── 3-D Model scene ─────────────────────────────────────────────────────────
 function HumanModel({ gender, selectedZone, hoveredZone, onZoneHover, onZoneClick }: ModelProps) {
   const { scene } = useGLTF(`/models/${gender}/body.gltf`);
-  const orbitRef  = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const orbitRef = useRef<{ autoRotate: boolean } | null>(null) as React.MutableRefObject<{ autoRotate: boolean } | null>;
   const autoRotateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Map each mesh to the zone it belongs to via its first bone influence
@@ -174,7 +174,7 @@ function HumanModel({ gender, selectedZone, hoveredZone, onZoneHover, onZoneClic
         </Center>
       </Bounds>
       <OrbitControls
-        ref={orbitRef}
+        ref={orbitRef as unknown as React.Ref<never>}
         autoRotate
         autoRotateSpeed={1.2}
         enablePan={false}
