@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Icon } from "@/components/Icon";
 import { BottomNav } from "@/components/BottomNav";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
@@ -34,22 +35,32 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
         <section className="mb-12">
           <Link
             href="/scan"
-            className="w-full bg-primary-gradient rounded-[24px] p-8 flex flex-col items-center justify-center gap-4 shadow-primary-glow active:scale-[0.98] transition-transform duration-200 group"
+            className="relative w-full rounded-[24px] overflow-hidden flex flex-col justify-end min-h-[220px] active:scale-[0.98] transition-transform duration-200 shadow-ambient-xl"
           >
-            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <Icon
-                name="photo_camera"
-                filled
-                className="text-white text-4xl"
-              />
-            </div>
-            <div className="text-center">
-              <span className="block text-white text-2xl font-bold tracking-tight mb-1">
-                {t.home.startScan}
-              </span>
-              <span className="block text-primary-fixed-dim text-sm font-medium">
-                {t.home.analyzeSkin}
-              </span>
+            <Image
+              src="/scan-hero.jpeg"
+              alt="Skin scanning"
+              fill
+              className="object-cover object-center"
+              priority
+            />
+            {/* overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
+            {/* content */}
+            <div className="relative z-10 px-6 pb-6 pt-16">
+              <h2 className="text-white text-xl font-bold leading-snug mb-1 drop-shadow-md">
+                {t.home.heroTitle}
+              </h2>
+              <p
+                className="text-white text-xs leading-relaxed mb-4 max-w-[260px]"
+                style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+              >
+                {t.home.heroSubtitle}
+              </p>
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-4 py-2">
+                <Icon name="my_location" className="text-white text-base" />
+                <span className="text-white text-sm font-semibold">{t.home.selectZoneBtn}</span>
+              </div>
             </div>
           </Link>
         </section>

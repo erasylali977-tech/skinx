@@ -68,6 +68,15 @@ const config: Config = {
         body: ["Inter", "sans-serif"],
         label: ["Inter", "sans-serif"],
       },
+      keyframes: {
+        "slide-up": {
+          "0%": { transform: "translateY(100%)" },
+          "100%": { transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "slide-up": "slide-up 0.28s cubic-bezier(0.32,0.72,0,1)",
+      },
       boxShadow: {
         ambient: "0 8px 24px rgba(26,27,31,0.06)",
         "ambient-xl": "0 8px 24px rgba(26,27,31,0.08)",

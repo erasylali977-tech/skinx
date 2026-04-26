@@ -1,24 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { MOCK } from "@/lib/mock";
-import { MOCK_COOKIE } from "@/lib/auth";
-import { isAuthPath, isProtectedPath } from "@/lib/authPaths";
 
 function mockMiddleware(request: NextRequest) {
-  const uid = request.cookies.get(MOCK_COOKIE)?.value;
-  const { pathname } = request.nextUrl;
-
-  if (isProtectedPath(pathname) && !uid) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-  if (isAuthPath(pathname) && uid) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/home";
-    return NextResponse.redirect(url);
-  }
+  // In mock/dev mode skip auth enforcement so UI can be tested without registration
   return NextResponse.next();
 }
 

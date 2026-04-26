@@ -207,3 +207,29 @@ export function boneToZone(boneName: string, gender: BodyGender): BodyZoneId | n
   const map = gender === 'male' ? MALE_MAP : FEMALE_MAP
   return map[boneName] ?? null
 }
+
+// ── Camera view per zone (for model auto-rotation) ───────────────────────────
+export type ZoneView = 'front' | 'back' | 'left' | 'right'
+
+export const ZONE_VIEW: Record<BodyZoneId, ZoneView> = {
+  head: 'front', neck: 'front', chest: 'front', abdomen: 'front', hips: 'front',
+  upper_back: 'back', lower_back: 'back',
+  shoulder_L: 'left', upper_arm_L: 'left', forearm_L: 'left', hand_L: 'left',
+  thigh_L: 'left', shin_L: 'left', foot_L: 'left',
+  shoulder_R: 'right', upper_arm_R: 'right', forearm_R: 'right', hand_R: 'right',
+  thigh_R: 'right', shin_R: 'right', foot_R: 'right',
+}
+
+export const VIEW_ROTATION_Y: Record<ZoneView, number> = {
+  front:  0,
+  back:   Math.PI,
+  left:  -Math.PI / 2,
+  right:  Math.PI / 2,
+}
+
+export const CAROUSEL_ZONE_IDS: BodyZoneId[] = [
+  'head', 'neck', 'chest', 'abdomen', 'upper_back', 'lower_back', 'hips',
+  'shoulder_L', 'shoulder_R', 'upper_arm_L', 'upper_arm_R',
+  'forearm_L', 'forearm_R', 'hand_L', 'hand_R',
+  'thigh_L', 'thigh_R', 'shin_L', 'shin_R', 'foot_L', 'foot_R',
+]
