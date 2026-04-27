@@ -28,7 +28,7 @@ export default async function MoleDetailPage({
     <MoleContent
       scan={scan}
       sameArea={sameArea}
-      latestUrl={latestUrl}
+      latestUrl={sameArea.length > 1 ? latestUrl : null}
       baselineUrl={baselineUrl}
     />
   );

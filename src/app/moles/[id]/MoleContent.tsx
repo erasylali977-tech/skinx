@@ -7,6 +7,7 @@ import { DeleteButton } from "./DeleteButton";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
+import { ZONE_DETAIL_MAP, type ImageZoneId } from "@/lib/zoneDetails";
 
 type Props = {
   scan: Scan;
@@ -16,7 +17,11 @@ type Props = {
 };
 
 export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+
+  const zoneLabel = scan.body_area
+    ? (ZONE_DETAIL_MAP[scan.body_area as ImageZoneId]?.name[locale] ?? scan.body_area)
+    : t.moles.skinCheck;
 
   function riskLabel(level: "low" | "medium" | "high") {
     return t.riskLevels[level];
@@ -33,7 +38,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
                 {t.moles.spotTracker}
               </p>
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-                {scan.body_area || t.moles.skinCheck}
+                {zoneLabel}
               </h1>
             </div>
             <div
@@ -70,10 +75,10 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
                     <Icon name="image" className="text-4xl text-outline-variant" />
                   </div>
                 )}
-                <div className="absolute bottom-3 left-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase">
+                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase text-white">
                   {formatDate(sameArea[sameArea.length - 1]?.created_at ?? scan.created_at)}
                 </div>
-                <div className="absolute top-3 left-3 bg-primary/10 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-primary uppercase">
+                <div className="absolute top-3 left-3 bg-surface-container/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-primary uppercase">
                   {t.moles.baseline}
                 </div>
               </div>
@@ -86,16 +91,21 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
                     className="w-full h-56 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-56 bg-surface-container-low flex items-center justify-center">
-                    <Icon name="image" className="text-4xl text-outline-variant" />
+                  <div className="w-full h-56 bg-surface-container-low flex flex-col items-center justify-center gap-2 px-3 text-center">
+                    <Icon name="add_a_photo" className="text-3xl text-outline-variant" />
+                    <p className="text-[10px] text-on-surface-variant leading-tight">{t.moles.onlyScanHint}</p>
                   </div>
                 )}
-                <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase">
-                  {formatDate(scan.created_at)}
-                </div>
-                <div className="absolute top-3 right-3 bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                  {t.moles.latest}
-                </div>
+                {latestUrl && (
+                  <>
+                    <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase text-white">
+                      {formatDate(scan.created_at)}
+                    </div>
+                    <div className="absolute top-3 right-3 bg-primary text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                      {t.moles.latest}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div className="mt-6 flex items-center justify-center gap-2 text-on-surface-variant">
@@ -112,11 +122,11 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           <div className="bg-surface-container-lowest rounded-xl p-6 grid grid-cols-2 md:grid-cols-5 gap-6 shadow-ambient">
             {(
               [
-                ["Asymmetry", scan.abcde.asymmetry],
-                ["Border", scan.abcde.border],
-                ["Color", scan.abcde.color],
-                ["Diameter", scan.abcde.diameter],
-                ["Evolution", scan.abcde.evolution],
+                [t.moles.abcde.asymmetry, scan.abcde.asymmetry],
+                [t.moles.abcde.border,    scan.abcde.border],
+                [t.moles.abcde.color,     scan.abcde.color],
+                [t.moles.abcde.diameter,  scan.abcde.diameter],
+                [t.moles.abcde.evolution, scan.abcde.evolution],
               ] as const
             ).map(([k, v]) => (
               <div key={k}>

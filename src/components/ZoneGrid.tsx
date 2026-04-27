@@ -49,8 +49,7 @@ export function ZoneGrid({ gender, onSelect }: Props) {
           </div>
 
           {/* Description below card */}
-          <p className="text-[11px] leading-relaxed px-0.5"
-             style={{ color: "rgba(52,211,153,0.85)" }}>
+          <p className="text-[11px] leading-relaxed px-0.5 font-medium text-emerald-700 dark:text-emerald-400">
             {zone.description[locale]}
           </p>
         </button>

@@ -221,6 +221,14 @@ export const translations = {
       deleteScan: "Delete",
       deleteConfirm: "Delete this scan? This cannot be undone.",
       score: "Score",
+      onlyScanHint: "Scan this area again to track changes over time",
+      abcde: {
+        asymmetry: "Asymmetry",
+        border: "Border",
+        color: "Color",
+        diameter: "Diameter",
+        evolution: "Evolution",
+      },
     },
     tutorial: {
       slide1Title: "Find Good Light",
@@ -464,6 +472,14 @@ export const translations = {
       deleteScan: "Удалить",
       deleteConfirm: "Удалить это сканирование? Это действие нельзя отменить.",
       score: "Балл",
+      onlyScanHint: "Сделайте следующее сканирование для отслеживания динамики",
+      abcde: {
+        asymmetry: "Асимметрия",
+        border: "Края",
+        color: "Цвет",
+        diameter: "Диаметр",
+        evolution: "Динамика",
+      },
     },
     tutorial: {
       slide1Title: "Найдите хорошее освещение",
@@ -707,6 +723,14 @@ export const translations = {
       deleteScan: "Жою",
       deleteConfirm: "Бұл сканерлеуді жою керек пе? Бұл әрекетті болдырмау мүмкін емес.",
       score: "Балл",
+      onlyScanHint: "Өзгерістерді бақылау үшін аймақты қайта сканерлеңіз",
+      abcde: {
+        asymmetry: "Асимметрия",
+        border: "Шет",
+        color: "Түс",
+        diameter: "Диаметр",
+        evolution: "Динамика",
+      },
     },
     tutorial: {
       slide1Title: "Жақсы жарық табыңыз",
