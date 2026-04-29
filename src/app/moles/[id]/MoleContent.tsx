@@ -7,6 +7,7 @@ import { DeleteButton } from "./DeleteButton";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
+import { getZoneLabel } from "@/lib/bodyZones";
 
 function nextScanDate(createdAt: string, level: "low" | "medium" | "high", locale: string): string {
   const d = new Date(createdAt);
@@ -151,7 +152,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               {t.moles.spotTracker}
             </p>
             <h1 className="text-white text-2xl font-extrabold tracking-tight leading-tight">
-              {scan.body_area || t.moles.skinCheck}
+              {getZoneLabel(scan.body_area, locale) || t.moles.skinCheck}
             </h1>
             <p className="text-white/60 text-xs mt-1">{formatDate(scan.created_at)}</p>
           </div>
@@ -204,11 +205,11 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-ambient space-y-4">
             <h2 className="text-base font-bold">{t.moles.abcdeMetrics}</h2>
             <div className="space-y-3">
-              <AbcdeBar label="A" desc="Asymmetry" value={scan.abcde.asymmetry} />
-              <AbcdeBar label="B" desc="Border"    value={scan.abcde.border} />
-              <AbcdeBar label="C" desc="Color"     value={scan.abcde.color} />
-              <AbcdeBar label="D" desc="Diameter"  value={scan.abcde.diameter} />
-              <AbcdeBar label="E" desc="Evolution" value={scan.abcde.evolution} />
+              <AbcdeBar label="A" desc={t.moles.abcde.asymmetry} value={scan.abcde.asymmetry} />
+              <AbcdeBar label="B" desc={t.moles.abcde.border}    value={scan.abcde.border} />
+              <AbcdeBar label="C" desc={t.moles.abcde.color}     value={scan.abcde.color} />
+              <AbcdeBar label="D" desc={t.moles.abcde.diameter}  value={scan.abcde.diameter} />
+              <AbcdeBar label="E" desc={t.moles.abcde.evolution} value={scan.abcde.evolution} />
             </div>
           </section>
 

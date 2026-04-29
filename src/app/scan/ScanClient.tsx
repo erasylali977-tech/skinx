@@ -148,6 +148,7 @@ export function ScanClient() {
       const fd = new FormData();
       fd.append("image", file);
       if (selectedZone) fd.append("body_area", selectedZone);
+      fd.append("locale", locale);
       const res = await fetch("/api/scans", { method: "POST", body: fd });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));

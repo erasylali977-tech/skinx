@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "image required" }, { status: 400 });
   }
   const bodyArea = (form.get("body_area") as string | null) || null;
+  const locale   = (form.get("locale")    as string | null) || "en";
 
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -48,10 +49,10 @@ export async function POST(request: NextRequest) {
 
   let analysis;
   try {
-    analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType });
+    analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType, locale });
   } catch (aiErr: unknown) {
     console.error("[scans] AI analysis failed, using mock fallback:", aiErr);
-    analysis = await new MockSkinAnalyzer().analyze({ bytes, bodyArea, mimeType });
+    analysis = await new MockSkinAnalyzer().analyze({ bytes, bodyArea, mimeType, locale });
   }
   const scanId = crypto.randomUUID();
 

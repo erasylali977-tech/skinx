@@ -16,31 +16,42 @@ export interface ZoneInfo {
   id: BodyZoneId
   label: string
   labelRu: string
+  labelKk: string
   short: string
 }
 
 export const ZONE_INFO: Record<BodyZoneId, ZoneInfo> = {
-  head:       { id: 'head',       label: 'Head',         labelRu: 'Голова',              short: 'Голова' },
-  neck:       { id: 'neck',       label: 'Neck',         labelRu: 'Шея',                 short: 'Шея' },
-  chest:      { id: 'chest',      label: 'Chest',        labelRu: 'Грудь',               short: 'Грудь' },
-  abdomen:    { id: 'abdomen',    label: 'Abdomen',      labelRu: 'Живот',               short: 'Живот' },
-  upper_back: { id: 'upper_back', label: 'Upper Back',   labelRu: 'Верхняя спина',       short: 'В.Спина' },
-  lower_back: { id: 'lower_back', label: 'Lower Back',   labelRu: 'Нижняя спина',        short: 'Н.Спина' },
-  hips:       { id: 'hips',       label: 'Hips',         labelRu: 'Бёдра',               short: 'Бёдра' },
-  shoulder_L: { id: 'shoulder_L', label: 'Left Shoulder',  labelRu: 'Левое плечо',       short: 'Л.Плечо' },
-  shoulder_R: { id: 'shoulder_R', label: 'Right Shoulder', labelRu: 'Правое плечо',      short: 'П.Плечо' },
-  upper_arm_L:{ id: 'upper_arm_L',label: 'Left Upper Arm', labelRu: 'Левая рука',        short: 'Л.Рука' },
-  upper_arm_R:{ id: 'upper_arm_R',label: 'Right Upper Arm',labelRu: 'Правая рука',       short: 'П.Рука' },
-  forearm_L:  { id: 'forearm_L',  label: 'Left Forearm', labelRu: 'Левое предплечье',    short: 'Л.Предпл' },
-  forearm_R:  { id: 'forearm_R',  label: 'Right Forearm',labelRu: 'Правое предплечье',   short: 'П.Предпл' },
-  hand_L:     { id: 'hand_L',     label: 'Left Hand',    labelRu: 'Левая кисть',         short: 'Л.Кисть' },
-  hand_R:     { id: 'hand_R',     label: 'Right Hand',   labelRu: 'Правая кисть',        short: 'П.Кисть' },
-  thigh_L:    { id: 'thigh_L',    label: 'Left Thigh',   labelRu: 'Левое бедро',         short: 'Л.Бедро' },
-  thigh_R:    { id: 'thigh_R',    label: 'Right Thigh',  labelRu: 'Правое бедро',        short: 'П.Бедро' },
-  shin_L:     { id: 'shin_L',     label: 'Left Shin',    labelRu: 'Левая голень',        short: 'Л.Голень' },
-  shin_R:     { id: 'shin_R',     label: 'Right Shin',   labelRu: 'Правая голень',       short: 'П.Голень' },
-  foot_L:     { id: 'foot_L',     label: 'Left Foot',    labelRu: 'Левая стопа',         short: 'Л.Стопа' },
-  foot_R:     { id: 'foot_R',     label: 'Right Foot',   labelRu: 'Правая стопа',        short: 'П.Стопа' },
+  head:       { id: 'head',       label: 'Head',          labelRu: 'Голова',             labelKk: 'Бас',              short: 'Голова' },
+  neck:       { id: 'neck',       label: 'Neck',          labelRu: 'Шея',                labelKk: 'Мойын',            short: 'Шея' },
+  chest:      { id: 'chest',      label: 'Chest',         labelRu: 'Грудь',              labelKk: 'Кеуде',           short: 'Грудь' },
+  abdomen:    { id: 'abdomen',    label: 'Abdomen',       labelRu: 'Живот',              labelKk: 'Іш',               short: 'Живот' },
+  upper_back: { id: 'upper_back', label: 'Upper Back',    labelRu: 'Верхняя спина',      labelKk: 'Жоғарғы арқа',    short: 'В.Спина' },
+  lower_back: { id: 'lower_back', label: 'Lower Back',    labelRu: 'Нижняя спина',       labelKk: 'Төменгі арқа',   short: 'Н.Спина' },
+  hips:       { id: 'hips',       label: 'Hips',          labelRu: 'Бёдра',              labelKk: 'Жамбас',          short: 'Бёдра' },
+  shoulder_L: { id: 'shoulder_L', label: 'Left Shoulder', labelRu: 'Левое плечо',      labelKk: 'Сол иық',       short: 'Л.Плечо' },
+  shoulder_R: { id: 'shoulder_R', label: 'Right Shoulder',labelRu: 'Правое плечо',     labelKk: 'Оң иық',        short: 'П.Плечо' },
+  upper_arm_L:{ id: 'upper_arm_L',label: 'Left Upper Arm',labelRu: 'Левая рука',       labelKk: 'Сол жоғарғы қол',  short: 'Л.Рука' },
+  upper_arm_R:{ id: 'upper_arm_R',label: 'Right Upper Arm',labelRu:'Правая рука',      labelKk: 'Оң жоғарғы қол', short: 'П.Рука' },
+  forearm_L:  { id: 'forearm_L',  label: 'Left Forearm',  labelRu: 'Левое предплечье',   labelKk: 'Сол білек',      short: 'Л.Предпл' },
+  forearm_R:  { id: 'forearm_R',  label: 'Right Forearm', labelRu: 'Правое предплечье',  labelKk: 'Оң білек',       short: 'П.Предпл' },
+  hand_L:     { id: 'hand_L',     label: 'Left Hand',     labelRu: 'Левая кисть',        labelKk: 'Сол алақан',    short: 'Л.Кисть' },
+  hand_R:     { id: 'hand_R',     label: 'Right Hand',    labelRu: 'Правая кисть',       labelKk: 'Оң алақан',     short: 'П.Кисть' },
+  thigh_L:    { id: 'thigh_L',    label: 'Left Thigh',    labelRu: 'Левое бедро',        labelKk: 'Сол сан',        short: 'Л.Бедро' },
+  thigh_R:    { id: 'thigh_R',    label: 'Right Thigh',   labelRu: 'Правое бедро',       labelKk: 'Оң сан',         short: 'П.Бедро' },
+  shin_L:     { id: 'shin_L',     label: 'Left Shin',     labelRu: 'Левая голень',       labelKk: 'Сол жіліншік',  short: 'Л.Голень' },
+  shin_R:     { id: 'shin_R',     label: 'Right Shin',    labelRu: 'Правая голень',      labelKk: 'Оң жіліншік',   short: 'П.Голень' },
+  foot_L:     { id: 'foot_L',     label: 'Left Foot',     labelRu: 'Левая стопа',        labelKk: 'Сол табан',      short: 'Л.Стопа' },
+  foot_R:     { id: 'foot_R',     label: 'Right Foot',    labelRu: 'Правая стопа',       labelKk: 'Оң табан',       short: 'П.Стопа' },
+}
+
+// Returns the zone label in the requested locale (falls back to English)
+export function getZoneLabel(zoneIdOrSlug: string | null | undefined, locale: string): string {
+  if (!zoneIdOrSlug) return '';
+  const info = ZONE_INFO[zoneIdOrSlug as BodyZoneId];
+  if (!info) return zoneIdOrSlug; // unknown slug → show as-is
+  if (locale === 'ru') return info.labelRu;
+  if (locale === 'kk') return info.labelKk;
+  return info.label;
 }
 
 export const TORSO_ZONE_IDS: BodyZoneId[] = [

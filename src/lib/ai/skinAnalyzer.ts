@@ -26,6 +26,7 @@ export interface SkinAnalyzer {
     bytes: Uint8Array;
     bodyArea?: string | null;
     mimeType?: string;
+    locale?: string;
   }): Promise<AnalysisResult>;
 }
 
@@ -49,7 +50,7 @@ function seeded(seed: number) {
 }
 
 export class MockSkinAnalyzer implements SkinAnalyzer {
-  async analyze({ bytes }: { bytes: Uint8Array; bodyArea?: string | null; mimeType?: string }): Promise<AnalysisResult> {
+  async analyze({ bytes }: { bytes: Uint8Array; bodyArea?: string | null; mimeType?: string; locale?: string }): Promise<AnalysisResult> {
     const seed = hashBytes(bytes);
     const rnd = seeded(seed);
 
@@ -90,32 +91,44 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
 
-const ANALYSIS_PROMPT = `You are a dermatology AI assistant helping users monitor their skin.
-Analyze the skin area in the image using ABCDE criteria.
-Return ONLY a valid JSON object — no markdown, no explanation, just raw JSON.
+const LANG_MAP: Record<string, string> = {
+  ru: "Russian",
+  kk: "Kazakh",
+  en: "English",
+};
+
+function buildPrompt(locale?: string): string {
+  const lang = LANG_MAP[locale ?? "en"] ?? "English";
+  return `You are a dermatology AI assistant helping patients monitor their skin health.
+Analyze the skin lesion or area visible in the image. It may be a mole, wart (verruca), age spot, skin tag, birthmark, rash, freckle, or any other skin formation.
+Apply general dermatology and dermoscopy evaluation criteria.
+Return ONLY a valid JSON object — no markdown fences, no explanation, just raw JSON.
 
 JSON structure (all numbers are integers 0-100):
 {
-  "riskScore": <weighted average of ABCDE, integer 0-100>,
+  "riskScore": <overall concern level, integer 0-100>,
   "riskLevel": <"low" | "medium" | "high">,
   "status": <"stable" | "review" | "new">,
   "abcde": {
     "asymmetry": <0=perfectly symmetric, 100=highly asymmetric>,
-    "border": <0=smooth regular, 100=irregular/ragged>,
-    "color": <0=uniform single color, 100=multiple colors>,
+    "border": <0=smooth/regular, 100=irregular/ragged>,
+    "color": <0=uniform single color, 100=multiple distinct colors>,
     "diameter": <0=tiny <2mm, 100=large >10mm>,
-    "evolution": <0=stable/no changes, 100=significant changes>
+    "evolution": <0=stable/no visible changes, 100=significant changes observed>
   },
-  "notes": "<One clinical sentence in English>",
-  "summary": "<2-3 plain language sentences explaining findings and next steps for the patient>"
+  "notes": "<One concise clinical observation sentence>",
+  "summary": "<2-3 plain language sentences: what was found, what it likely is, and the recommended next step for the patient>"
 }
 
 Rules:
 - riskLevel: low if riskScore<35, medium if 35-59, high if >=60
-- status: "review" when riskLevel is "high", otherwise "stable"
-- If image doesn't clearly show skin, set all scores to 0 and explain in notes
+- status: "review" when high risk, otherwise "stable"
+- Warts/verrucas are typically low risk — score accordingly
+- If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis
+- Write the "notes" and "summary" fields in ${lang}
 - Return ONLY the JSON object`;
+}
 
 function clamp(v: unknown, min = 0, max = 100): number {
   const n = typeof v === "number" ? v : 0;
@@ -133,23 +146,26 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     bytes,
     bodyArea,
     mimeType,
+    locale,
   }: {
     bytes: Uint8Array;
     bodyArea?: string | null;
     mimeType?: string;
+    locale?: string;
   }): Promise<AnalysisResult> {
     const model = this.client.getGenerativeModel({
       model: GEMINI_MODEL,
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.1,
-        maxOutputTokens: 512,
+        maxOutputTokens: 600,
       },
     });
 
+    const basePrompt = buildPrompt(locale);
     const prompt = bodyArea
-      ? `${ANALYSIS_PROMPT}\n\nBody area provided by user: ${bodyArea}`
-      : ANALYSIS_PROMPT;
+      ? `${basePrompt}\n\nBody area: ${bodyArea}`
+      : basePrompt;
 
     const imagePart = {
       inlineData: {
