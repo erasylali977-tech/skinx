@@ -159,28 +159,32 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       ? `${basePrompt}\n\nBody area: ${bodyArea}`
       : basePrompt;
 
-    const url = `${GEMINI_API_URL}/${GEMINI_MODEL}:generateContent?key=${this.apiKey}`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType ?? "image/jpeg", data: Buffer.from(bytes).toString("base64") } },
-          ],
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 600,
-        },
-      }),
+    const body = JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType ?? "image/jpeg", data: Buffer.from(bytes).toString("base64") } },
+        ],
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
     });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => res.statusText);
-      throw new Error(`Gemini v1 ${res.status}: ${errText.slice(0, 300)}`);
+    // Retry up to 3 times on 503 (model overloaded) with backoff
+    let res: Response | null = null;
+    const models = [GEMINI_MODEL, "gemini-2.0-flash-lite"];
+    for (const model of models) {
+      const modelUrl = `${GEMINI_API_URL}/${model}:generateContent?key=${this.apiKey}`;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+        res = await fetch(modelUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+        if (res.status !== 503) break;
+      }
+      if (res && res.status !== 503) break;
+    }
+
+    if (!res || !res.ok) {
+      const errText = await res?.text().catch(() => res?.statusText ?? "unknown") ?? "no response";
+      throw new Error(`Gemini ${res?.status ?? 0}: ${errText.slice(0, 300)}`);
     }
 
     const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
