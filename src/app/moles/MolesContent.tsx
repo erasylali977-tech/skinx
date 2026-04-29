@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
+import { getZoneLabel } from "@/lib/bodyZones";
 
 type Props = {
   scans: Scan[];
@@ -20,7 +21,7 @@ const RISK_COLOR: Record<string, string> = {
 };
 
 export function MolesContent({ scans, thumbs }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-32 pt-20">
@@ -57,7 +58,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={thumbs[i] as string}
-                      alt={s.body_area || t.home.skinCheck}
+                      alt={getZoneLabel(s.body_area, locale) || t.home.skinCheck}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -69,7 +70,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-on-surface text-base leading-tight truncate">
-                      {s.body_area || t.home.skinCheck}
+                      {getZoneLabel(s.body_area, locale) || t.home.skinCheck}
                     </h3>
                     <span
                       className={cn(

@@ -57,9 +57,6 @@ function ScoreGauge({ score, level }: { score: number; level: "low" | "medium" |
           / 100
         </text>
       </svg>
-      <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-        Skin Health Score
-      </p>
     </div>
   );
 }
