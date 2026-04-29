@@ -88,7 +88,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite";
 
 const LANG_MAP: Record<string, string> = {
   ru: "Russian",
@@ -169,9 +169,9 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
     });
 
-    // Retry up to 3 times on 503 (model overloaded) with backoff
+    // Try models in order: primary → stable fallback. Retry each up to 3× on 503.
     let res: Response | null = null;
-    const models = [GEMINI_MODEL, "gemini-2.0-flash-lite"];
+    const models = [GEMINI_MODEL, "gemini-2.0-flash-001"];
     for (const model of models) {
       const modelUrl = `${GEMINI_API_URL}/${model}:generateContent?key=${this.apiKey}`;
       for (let attempt = 0; attempt < 3; attempt++) {
