@@ -174,7 +174,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     const models = [GEMINI_MODEL, "gemini-2.5-pro"];
     for (const model of models) {
       const modelUrl = `${GEMINI_API_URL}/${model}:generateContent?key=${this.apiKey}`;
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
         res = await fetch(modelUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body });
         if (res.status !== 503) break;
