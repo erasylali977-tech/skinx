@@ -47,11 +47,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const analyzerType = skinAnalyzer instanceof MockSkinAnalyzer ? "MockSkinAnalyzer" : "GeminiSkinAnalyzer";
+  console.log(`[scans] POST — analyzer=${analyzerType} locale=${locale} bodyArea=${bodyArea ?? "none"} size=${bytes.length}b`);
+
   let analysis;
   try {
     analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType, locale });
+    console.log(`[scans] ✅ Analysis OK — riskLevel=${analysis.riskLevel} score=${analysis.riskScore}`);
   } catch (aiErr: unknown) {
-    console.error("[scans] AI analysis failed, using mock fallback:", aiErr);
+    console.error("[scans] ❌ AI analysis failed, using mock fallback:", aiErr);
     analysis = await new MockSkinAnalyzer().analyze({ bytes, bodyArea, mimeType, locale });
   }
   const scanId = crypto.randomUUID();
