@@ -194,3 +194,11 @@ body {
   height: 2px;
   animation: scan-sweep 2.4s ease-in-out infinite alternate;
 }
+
+@keyframes fill-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+.animate-fill-bar {
+  animation: fill-bar 1.4s linear forwards;
+}

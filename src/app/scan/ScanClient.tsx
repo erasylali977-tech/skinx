@@ -9,14 +9,94 @@ import { type BodyGender } from "@/lib/bodyZones";
 import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { ZoneGrid } from "@/components/ZoneGrid";
 
-type Step = "zones" | "scan";
+// ── Analyzing overlay shown while AI processes the image ───────────────────
+const AI_STEPS = ["Analyzing Texture", "Detecting Color", "Mapping Shape", "Assessing Risk"] as const;
+
+function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(
+      () => setStep(prev => (prev < AI_STEPS.length - 1 ? prev + 1 : prev)),
+      1400,
+    );
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden">
+      {/* Blurred photo background */}
+      {photoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-110" />
+      )}
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-3xl" />
+
+      <div className="relative z-10 flex flex-col items-center gap-8 px-8 w-full max-w-xs text-white">
+        {/* Pulsing rings + icon */}
+        <div className="relative flex items-center justify-center w-32 h-32">
+          <div
+            className="absolute w-32 h-32 rounded-full border-2 border-primary/40 animate-ping"
+            style={{ animationDuration: "2s" }}
+          />
+          <div
+            className="absolute w-24 h-24 rounded-full border-2 border-primary/60 animate-ping"
+            style={{ animationDuration: "2s", animationDelay: "0.6s" }}
+          />
+          <div className="w-20 h-20 rounded-full bg-primary shadow-primary-glow flex items-center justify-center">
+            <Icon name="psychology" filled className="text-white text-4xl" />
+          </div>
+        </div>
+
+        <div className="text-center">
+          <h2 className="text-xl font-bold tracking-tight">SkinX AI analyzing…</h2>
+          <p className="text-white/50 text-sm mt-1">This takes a few seconds</p>
+        </div>
+
+        {/* Step progress */}
+        <div className="w-full space-y-3">
+          {AI_STEPS.map((label, i) => {
+            const done   = i < step;
+            const active = i === step;
+            return (
+              <div key={label} className="flex items-center gap-3">
+                <div
+                  className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-500 ${
+                    done   ? "bg-emerald-500"
+                    : active ? "bg-primary ring-4 ring-primary/25"
+                    : "bg-white/10"
+                  }`}
+                >
+                  {done && <Icon name="check" className="text-white text-[10px]" />}
+                </div>
+                <div className="flex-1">
+                  <p className={`text-xs font-semibold transition-colors ${done || active ? "text-white" : "text-white/30"}`}>
+                    {label}
+                  </p>
+                  {active && (
+                    <div className="mt-1 h-[2px] bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full animate-fill-bar" />
+                    </div>
+                  )}
+                </div>
+                {done && <Icon name="check_circle" filled className="text-emerald-400 text-sm flex-shrink-0" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ScanStep = "zones" | "scan";
 
 export function ScanClient() {
   const router = useRouter();
   const { t, locale } = useI18n();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const [step,         setStep]         = useState<Step>("zones");
+  const [step,         setStep]         = useState<ScanStep>("zones");
   const [gender,       setGender]       = useState<BodyGender>("male");
 
   // Persist & restore gender preference
@@ -135,6 +215,7 @@ export function ScanClient() {
   // ── Step: scan (camera + upload) ───────────────────────────────────────
   return (
     <>
+      {uploading && <AnalyzingOverlay photoUrl={preview} />}
       {cameraOpen && (
         <ScanCamera
           onCapture={handleCapture}
