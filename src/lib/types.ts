@@ -4,6 +4,7 @@ export type Scan = {
   image_path: string;
   body_area: string | null;
   notes: string | null;
+  summary: string | null;
   risk_score: number;
   risk_level: "low" | "medium" | "high";
   status: "stable" | "review" | "new";

@@ -23,5 +23,5 @@ export default async function AccountPage() {
     profile = data;
   }
 
-  return <AccountContent email={user.email ?? ""} profile={profile} />;
+  return <AccountContent email={user.email ?? ""} full_name={profile?.full_name} profile={profile} />;
 }

@@ -20,6 +20,8 @@ export const translations = {
       scan: "Scan",
       profile: "Profile",
       account: "Account",
+      analysis: "Analysis",
+      log: "Log",
     },
     welcome: {
       headline: "Your Skin's Digital Guardian",
@@ -139,6 +141,7 @@ export const translations = {
       language: "Language",
       terms: "Terms of Use",
       privacy: "Privacy Policy",
+      skinPassport: "Skin Passport",
     },
     riskLevels: {
       low: "Stable",
@@ -271,6 +274,8 @@ export const translations = {
       scan: "Сканирование",
       profile: "Профиль",
       account: "Аккаунт",
+      analysis: "Анализ",
+      log: "Журнал",
     },
     welcome: {
       headline: "Цифровой страж вашей кожи",
@@ -390,6 +395,7 @@ export const translations = {
       language: "Язык",
       terms: "Условия использования",
       privacy: "Политика конфиденциальности",
+      skinPassport: "Паспорт кожи",
     },
     riskLevels: {
       low: "Стабильно",
@@ -522,6 +528,8 @@ export const translations = {
       scan: "Сканерлеу",
       profile: "Профиль",
       account: "Аккаунт",
+      analysis: "Талдау",
+      log: "Журнал",
     },
     welcome: {
       headline: "Теріңіздің цифрлық қорғаншысы",
@@ -641,6 +649,7 @@ export const translations = {
       language: "Тіл",
       terms: "Пайдалану шарттары",
       privacy: "Құпиялылық саясаты",
+      skinPassport: "Тері паспорты",
     },
     riskLevels: {
       low: "Тұрақты",

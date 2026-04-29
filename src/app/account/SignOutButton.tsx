@@ -16,9 +16,9 @@ export function SignOutButton() {
   return (
     <button
       onClick={signOut}
-      className="w-full py-4 rounded-full bg-surface-container-high text-on-surface font-semibold flex items-center justify-center gap-2 active:scale-95"
+      className="w-full py-4 flex items-center justify-center gap-2 text-error font-semibold active:opacity-70 transition-opacity"
     >
-      <Icon name="logout" />
+      <Icon name="logout" className="text-error" />
       <span>{t.common.signOut}</span>
     </button>
   );

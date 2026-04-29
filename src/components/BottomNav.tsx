@@ -10,8 +10,9 @@ export function BottomNav() {
   const { t } = useI18n();
   const items = [
     { href: "/home", label: t.nav.home, icon: "home" },
-    { href: "/dashboard", label: t.nav.dashboard, icon: "analytics" },
-    { href: "/account", label: t.nav.account, icon: "person" },
+    { href: "/dashboard", label: t.nav.analysis, icon: "analytics" },
+    { href: "/moles", label: t.nav.log, icon: "article" },
+    { href: "/account", label: t.nav.profile, icon: "person" },
   ];
   return (
     <nav className="fixed bottom-0 left-0 w-full z-40 rounded-t-[1.5rem] bg-surface-container-lowest shadow-ambient-up flex items-stretch pb-8 pt-3 px-2">

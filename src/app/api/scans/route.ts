@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const analysis = await skinAnalyzer.analyze({ bytes, bodyArea });
+  const analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType });
   const scanId = crypto.randomUUID();
 
   if (MOCK) {
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       image_path: `mock:${scanId}`,
       body_area: bodyArea,
       notes: analysis.notes,
+      summary: analysis.summary,
       risk_score: analysis.riskScore,
       risk_level: analysis.riskLevel,
       status: analysis.status,
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         image_path: path,
         body_area: bodyArea,
         notes: analysis.notes,
+        summary: analysis.summary,
         risk_score: analysis.riskScore,
         risk_level: analysis.riskLevel,
         status: analysis.status,
