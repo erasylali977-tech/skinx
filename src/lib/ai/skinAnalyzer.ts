@@ -88,7 +88,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite";
 
 const LANG_MAP: Record<string, string> = {
   ru: "Russian",
@@ -134,7 +134,7 @@ function clamp(v: unknown, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
-const GEMINI_V1_URL = "https://generativelanguage.googleapis.com/v1/models";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export class GeminiSkinAnalyzer implements SkinAnalyzer {
   private apiKey: string;
@@ -159,7 +159,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       ? `${basePrompt}\n\nBody area: ${bodyArea}`
       : basePrompt;
 
-    const url = `${GEMINI_V1_URL}/${GEMINI_MODEL}:generateContent?key=${this.apiKey}`;
+    const url = `${GEMINI_API_URL}/${GEMINI_MODEL}:generateContent?key=${this.apiKey}`;
 
     const res = await fetch(url, {
       method: "POST",
