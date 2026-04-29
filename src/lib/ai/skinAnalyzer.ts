@@ -174,7 +174,6 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
         generationConfig: {
           temperature: 0.1,
           maxOutputTokens: 600,
-          responseMimeType: "application/json",
         },
       }),
     });
@@ -187,9 +186,12 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
+    // Strip markdown code fences Gemini sometimes wraps around JSON
+    const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(jsonText);
     } catch {
       throw new Error("Gemini returned invalid JSON: " + text.slice(0, 120));
     }
