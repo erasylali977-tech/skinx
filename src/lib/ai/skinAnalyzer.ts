@@ -238,14 +238,113 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
   }
 }
 
+// ── Groq Vision Analyzer (free tier, reliable uptime) ─────────────────────
+const GROQ_MODEL = process.env.GROQ_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct";
+
+export class GroqSkinAnalyzer implements SkinAnalyzer {
+  private apiKey: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async analyze({
+    bytes,
+    bodyArea,
+    mimeType,
+    locale,
+  }: {
+    bytes: Uint8Array;
+    bodyArea?: string | null;
+    mimeType?: string;
+    locale?: string;
+  }): Promise<AnalysisResult> {
+    const basePrompt = buildPrompt(locale);
+    const prompt = bodyArea ? `${basePrompt}\n\nBody area: ${bodyArea}` : basePrompt;
+    const b64 = Buffer.from(bytes).toString("base64");
+    const imgMime = mimeType ?? "image/jpeg";
+
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.1,
+        max_tokens: 600,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: `data:${imgMime};base64,${b64}` } },
+          ],
+        }],
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Groq ${res.status}: ${errText.slice(0, 300)}`);
+    }
+
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const text = data.choices?.[0]?.message?.content ?? "";
+
+    const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      throw new Error("Groq returned invalid JSON: " + text.slice(0, 120));
+    }
+
+    const raw = parsed as {
+      abcde?: Record<string, unknown>;
+      riskScore?: unknown; riskLevel?: unknown;
+      status?: unknown; notes?: unknown; summary?: unknown;
+    };
+
+    const abcde: AbcdeScores = {
+      asymmetry: clamp(raw.abcde?.asymmetry),
+      border:    clamp(raw.abcde?.border),
+      color:     clamp(raw.abcde?.color),
+      diameter:  clamp(raw.abcde?.diameter),
+      evolution: clamp(raw.abcde?.evolution),
+    };
+    const riskScore = clamp(
+      raw.riskScore ??
+      Math.round((abcde.asymmetry + abcde.border + abcde.color + abcde.diameter + abcde.evolution) / 5),
+    );
+    const riskLevel: RiskLevel = riskScore >= 60 ? "high" : riskScore >= 35 ? "medium" : "low";
+    const status =
+      typeof raw.status === "string" && ["stable", "review", "new"].includes(raw.status)
+        ? (raw.status as "stable" | "review" | "new")
+        : riskLevel === "high" ? "review" : "stable";
+
+    return {
+      riskScore, riskLevel, status, abcde,
+      notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
+      summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
+    };
+  }
+}
+
 // ── Auto-select analyzer based on environment ─────────────────────────────
 function createAnalyzer(): SkinAnalyzer {
-  const key = process.env.GEMINI_API_KEY;
-  if (key) {
-    console.log(`[SkinX] ✅ GeminiSkinAnalyzer active (model: ${GEMINI_MODEL})`);
-    return new GeminiSkinAnalyzer(key);
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    console.log(`[SkinX] ✅ GroqSkinAnalyzer active (model: ${GROQ_MODEL})`);
+    return new GroqSkinAnalyzer(groqKey);
   }
-  console.warn("[SkinX] ⚠️  GEMINI_API_KEY not set — falling back to MockSkinAnalyzer");
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    console.log(`[SkinX] ✅ GeminiSkinAnalyzer active (model: ${GEMINI_MODEL})`);
+    return new GeminiSkinAnalyzer(geminiKey);
+  }
+  console.warn("[SkinX] ⚠️  No AI key set (GROQ_API_KEY / GEMINI_API_KEY) — using MockSkinAnalyzer");
   return new MockSkinAnalyzer();
 }
 

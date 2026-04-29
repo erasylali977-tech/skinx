@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { skinAnalyzer, MockSkinAnalyzer } from "@/lib/ai/skinAnalyzer";
+import { skinAnalyzer, MockSkinAnalyzer, GroqSkinAnalyzer, GeminiSkinAnalyzer } from "@/lib/ai/skinAnalyzer";
 import { MOCK, mockInsertScan, mockListScans } from "@/lib/mock";
 import { getCurrentUser } from "@/lib/auth";
 import type { Scan } from "@/lib/types";
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const analyzerType = skinAnalyzer instanceof MockSkinAnalyzer ? "MockSkinAnalyzer" : "GeminiSkinAnalyzer";
+  const analyzerType = skinAnalyzer instanceof GroqSkinAnalyzer ? "GroqSkinAnalyzer" : skinAnalyzer instanceof GeminiSkinAnalyzer ? "GeminiSkinAnalyzer" : "MockSkinAnalyzer";
   console.log(`[scans] POST — analyzer=${analyzerType} locale=${locale} bodyArea=${bodyArea ?? "none"} size=${bytes.length}b`);
 
   let analysis;
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     console.error("[scans] ❌ AI analysis failed:", aiErr);
     // In production (real Gemini analyzer), surface the error to the user — don't silently save fake data.
     // In dev/mock mode (no API key), fall back to mock so local testing still works.
-    if (!(skinAnalyzer instanceof MockSkinAnalyzer)) {
+    if (skinAnalyzer instanceof GroqSkinAnalyzer || skinAnalyzer instanceof GeminiSkinAnalyzer) {
       return NextResponse.json(
         { error: "AI analysis temporarily unavailable. Please try again in a moment." },
         { status: 503 },
