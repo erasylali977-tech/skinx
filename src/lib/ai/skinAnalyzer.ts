@@ -89,7 +89,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash-preview-04-17";
 
 const LANG_MAP: Record<string, string> = {
   ru: "Russian",
