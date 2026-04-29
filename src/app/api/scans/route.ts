@@ -55,7 +55,15 @@ export async function POST(request: NextRequest) {
     analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType, locale });
     console.log(`[scans] ✅ Analysis OK — riskLevel=${analysis.riskLevel} score=${analysis.riskScore}`);
   } catch (aiErr: unknown) {
-    console.error("[scans] ❌ AI analysis failed, using mock fallback:", aiErr);
+    console.error("[scans] ❌ AI analysis failed:", aiErr);
+    // In production (real Gemini analyzer), surface the error to the user — don't silently save fake data.
+    // In dev/mock mode (no API key), fall back to mock so local testing still works.
+    if (!(skinAnalyzer instanceof MockSkinAnalyzer)) {
+      return NextResponse.json(
+        { error: "AI analysis temporarily unavailable. Please try again in a moment." },
+        { status: 503 },
+      );
+    }
     analysis = await new MockSkinAnalyzer().analyze({ bytes, bodyArea, mimeType, locale });
   }
   const scanId = crypto.randomUUID();
