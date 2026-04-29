@@ -88,7 +88,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash-lite";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 const LANG_MAP: Record<string, string> = {
   ru: "Russian",
@@ -169,13 +169,13 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
     });
 
-    // Try models in order: primary → stable fallback. Retry each up to 3× on 503.
+    // Only gemini-2.5-* is available for new API keys. Retry on 503 with backoff.
     let res: Response | null = null;
-    const models = [GEMINI_MODEL, "gemini-2.0-flash-001"];
+    const models = [GEMINI_MODEL, "gemini-2.5-pro"];
     for (const model of models) {
       const modelUrl = `${GEMINI_API_URL}/${model}:generateContent?key=${this.apiKey}`;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
         res = await fetch(modelUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body });
         if (res.status !== 503) break;
       }
