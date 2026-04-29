@@ -88,7 +88,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
 
 const ANALYSIS_PROMPT = `You are a dermatology AI assistant helping users monitor their skin.
 Analyze the skin area in the image using ABCDE criteria.
