@@ -98,18 +98,12 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
     low:    "bg-emerald-500/90 text-white",
   }[scan.risk_level];
 
-  async function shareReport() {
-    const text = `SkinX — ${scan.body_area || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
-    try {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ title: "SkinX Scan Report", text });
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-    } catch { /* user cancelled */ }
-  }
-
-  function downloadPdf() {
+  async function sharePdfReport() {
+    // Try native share first; fall back to print-as-PDF
+    const text = `SkinX — ${getZoneLabel(scan.body_area, locale) || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: "SkinX Scan Report", text }); return; } catch { /* fall through */ }
+    }
     window.print();
   }
 
@@ -288,30 +282,25 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
             </div>
           </section>
 
-          {/* ── Actions: New Scan + Share + PDF + Delete ── */}
-          <section className="flex gap-3 pt-1 no-print">
-            <Link
-              href="/scan"
-              className="flex-1 bg-primary-gradient text-on-primary font-bold rounded-2xl px-4 py-4 shadow-primary-glow active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
-            >
-              <Icon name="add_a_photo" />
-              {t.moles.newScan}
-            </Link>
-            <button
-              onClick={shareReport}
-              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
-            >
-              <Icon name="share" />
-              {t.moles.shareReport}
-            </button>
-            <button
-              onClick={downloadPdf}
-              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
-              title={t.moles.downloadPdf}
-            >
-              <Icon name="picture_as_pdf" />
-            </button>
-            <DeleteButton id={scan.id} />
+          {/* ── Actions ── */}
+          <section className="space-y-3 pt-1 no-print">
+            <div className="flex gap-3">
+              <Link
+                href="/scan"
+                className="flex-1 bg-primary-gradient text-on-primary font-bold rounded-2xl px-4 py-4 shadow-primary-glow active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <Icon name="add_a_photo" />
+                {t.moles.newScan}
+              </Link>
+              <button
+                onClick={sharePdfReport}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
+              >
+                <Icon name="picture_as_pdf" />
+                {t.moles.sharePdfReport}
+              </button>
+            </div>
+            <DeleteButton id={scan.id} fullWidth />
           </section>
 
         </div>

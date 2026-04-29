@@ -155,11 +155,11 @@ export function ScanClient() {
         throw new Error(j.error || t.scan.uploadFailed);
       }
       const j = await res.json();
+      // Keep overlay visible during navigation — component unmounts when new page loads
       router.push(`/moles/${j.id}`);
       router.refresh();
     } catch (e: unknown) {
       setError((e as { message?: string })?.message ?? t.scan.uploadFailed);
-    } finally {
       setUploading(false);
     }
   }

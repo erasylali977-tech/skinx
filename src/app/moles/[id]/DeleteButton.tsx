@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 
-export function DeleteButton({ id }: { id: string }) {
+export function DeleteButton({ id, fullWidth }: { id: string; fullWidth?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -28,10 +28,10 @@ export function DeleteButton({ id }: { id: string }) {
     <button
       onClick={onDelete}
       disabled={busy}
-      className="px-6 py-4 rounded-full bg-surface-container-high text-on-surface font-semibold flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
+      className={`py-3.5 rounded-2xl border border-red-500/30 text-red-500 font-semibold flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60 transition-all text-sm ${fullWidth ? "w-full" : "px-6"}`}
     >
       <Icon name="delete" />
-      <span className="hidden sm:inline">{t.moles.deleteScan}</span>
+      {t.moles.deleteScan}
     </button>
   );
 }

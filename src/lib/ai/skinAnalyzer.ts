@@ -125,8 +125,8 @@ Rules:
 - Warts/verrucas are typically low risk — score accordingly
 - If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis
-- Write the "notes" and "summary" fields in ${lang}
-- Return ONLY the JSON object`;
+- IMPORTANT: Write the "notes" and "summary" fields EXCLUSIVELY in ${lang}. Do NOT use any other language.
+- Return ONLY the JSON object, no markdown, no explanation`;
 }
 
 function clamp(v: unknown, min = 0, max = 100): number {

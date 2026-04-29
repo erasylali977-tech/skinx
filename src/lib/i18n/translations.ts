@@ -238,6 +238,7 @@ export const translations = {
       consultDermBody: "This scan shows elevated indicators. We recommend scheduling a professional skin examination.",
       shareReport: "Share Report",
       downloadPdf: "Download PDF",
+      sharePdfReport: "Share PDF Report",
       inTwoWeeks: "in 2 weeks",
       inSixWeeks: "in 6 weeks",
       abcde: {
@@ -507,6 +508,7 @@ export const translations = {
       consultDermBody: "Сканирование выявило повышенные показатели. Рекомендуем записаться на приём к дерматологу.",
       shareReport: "Поделиться отчётом",
       downloadPdf: "Скачать PDF",
+      sharePdfReport: "Поделиться PDF-отчётом",
       inTwoWeeks: "через 2 недели",
       inSixWeeks: "через 6 недель",
       abcde: {
@@ -776,6 +778,7 @@ export const translations = {
       consultDermBody: "Сканерлеу жоғары көрсеткіштер анықтады. Кәсіби тексеру үшін дерматологпен кеңесуді ұсынамыз.",
       shareReport: "Есепті бөлісу",
       downloadPdf: "PDF жүктеу",
+      sharePdfReport: "PDF есебін бөлісу",
       inTwoWeeks: "2 аптадан кейін",
       inSixWeeks: "6 аптадан кейін",
       abcde: {
