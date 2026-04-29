@@ -1,6 +1,5 @@
 // Pluggable SkinAnalyzer interface.
 // Auto-selects GeminiSkinAnalyzer when GEMINI_API_KEY is set, else MockSkinAnalyzer.
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -89,7 +88,7 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
 }
 
 // ── Gemini Vision Analyzer ────────────────────────────────────────────────
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash-preview-04-17";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
 
 const LANG_MAP: Record<string, string> = {
   ru: "Russian",
@@ -135,11 +134,13 @@ function clamp(v: unknown, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
+const GEMINI_V1_URL = "https://generativelanguage.googleapis.com/v1/models";
+
 export class GeminiSkinAnalyzer implements SkinAnalyzer {
-  private client: GoogleGenerativeAI;
+  private apiKey: string;
 
   constructor(apiKey: string) {
-    this.client = new GoogleGenerativeAI(apiKey);
+    this.apiKey = apiKey;
   }
 
   async analyze({
@@ -153,29 +154,38 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     mimeType?: string;
     locale?: string;
   }): Promise<AnalysisResult> {
-    const model = this.client.getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.1,
-        maxOutputTokens: 600,
-      },
-    });
-
     const basePrompt = buildPrompt(locale);
     const prompt = bodyArea
       ? `${basePrompt}\n\nBody area: ${bodyArea}`
       : basePrompt;
 
-    const imagePart = {
-      inlineData: {
-        data: Buffer.from(bytes).toString("base64"),
-        mimeType: mimeType ?? "image/jpeg",
-      },
-    };
+    const url = `${GEMINI_V1_URL}/${GEMINI_MODEL}:generateContent?key=${this.apiKey}`;
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const text = result.response.text();
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType ?? "image/jpeg", data: Buffer.from(bytes).toString("base64") } },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 600,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Gemini v1 ${res.status}: ${errText.slice(0, 300)}`);
+    }
+
+    const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     let parsed: Record<string, unknown>;
     try {
