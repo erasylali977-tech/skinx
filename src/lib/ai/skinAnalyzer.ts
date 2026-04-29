@@ -209,7 +209,11 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
 // ── Auto-select analyzer based on environment ─────────────────────────────
 function createAnalyzer(): SkinAnalyzer {
   const key = process.env.GEMINI_API_KEY;
-  if (key) return new GeminiSkinAnalyzer(key);
+  if (key) {
+    console.log(`[SkinX] ✅ GeminiSkinAnalyzer active (model: ${GEMINI_MODEL})`);
+    return new GeminiSkinAnalyzer(key);
+  }
+  console.warn("[SkinX] ⚠️  GEMINI_API_KEY not set — falling back to MockSkinAnalyzer");
   return new MockSkinAnalyzer();
 }
 

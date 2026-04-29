@@ -10,9 +10,9 @@ import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { ZoneGrid } from "@/components/ZoneGrid";
 
 // ── Analyzing overlay shown while AI processes the image ───────────────────
-const AI_STEPS = ["Analyzing Texture", "Detecting Color", "Mapping Shape", "Assessing Risk"] as const;
-
 function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
+  const { t } = useI18n();
+  const AI_STEPS = [t.scan.stepTexture, t.scan.stepColor, t.scan.stepShape, t.scan.stepRisk];
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -21,6 +21,7 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
       1400,
     );
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -49,8 +50,8 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
         </div>
 
         <div className="text-center">
-          <h2 className="text-xl font-bold tracking-tight">SkinX AI analyzing…</h2>
-          <p className="text-white/50 text-sm mt-1">This takes a few seconds</p>
+          <h2 className="text-xl font-bold tracking-tight">{t.scan.analyzing}</h2>
+          <p className="text-white/50 text-sm mt-1">{t.scan.analyzingHint}</p>
         </div>
 
         {/* Step progress */}

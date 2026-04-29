@@ -8,10 +8,11 @@ import { useI18n } from "@/lib/i18n/context";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
 
-function nextScanDate(createdAt: string, level: "low" | "medium" | "high"): string {
+function nextScanDate(createdAt: string, level: "low" | "medium" | "high", locale: string): string {
   const d = new Date(createdAt);
   d.setDate(d.getDate() + (level === "high" ? 14 : 42));
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const loc = locale === "ru" ? "ru-RU" : locale === "kk" ? "kk-KZ" : "en-US";
+  return d.toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" });
 }
 
 type Props = {
@@ -91,7 +92,7 @@ function AbcdeBar({ label, desc, value }: { label: string; desc: string; value: 
 }
 
 export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const riskBadge = {
     high:   "bg-red-500/90 text-white",
@@ -100,7 +101,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
   }[scan.risk_level];
 
   async function shareReport() {
-    const text = `SkinX Scan — ${scan.body_area || "Skin Check"}\nRisk: ${scan.risk_level.toUpperCase()} (score ${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
+    const text = `SkinX — ${scan.body_area || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({ title: "SkinX Scan Report", text });
@@ -110,9 +111,21 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
     } catch { /* user cancelled */ }
   }
 
+  function downloadPdf() {
+    window.print();
+  }
+
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-32 pt-16">
-      <AppHeader back="/dashboard" />
+      {/* Print-only header */}
+      <div className="print-only p-6 border-b border-gray-200 mb-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-black">SkinX</h1>
+          <p className="text-sm text-gray-500">{formatDate(scan.created_at)}</p>
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">skinx.fit — {t.disclaimer.body1}</p>
+      </div>
+      <div className="no-print"><AppHeader back="/dashboard" /></div>
       <main className="pb-8 max-w-2xl mx-auto space-y-4">
 
         {/* ── Hero photo with risk badge + title overlay ── */}
@@ -149,7 +162,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           {/* ── Health score gauge ── */}
           <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-ambient flex flex-col items-center gap-1">
             <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-              Skin Health Score
+              {t.moles.skinHealthScore}
             </p>
             <ScoreGauge score={scan.risk_score} level={scan.risk_level} />
           </section>
@@ -160,13 +173,13 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Icon name="psychology" filled className="text-primary text-base" />
               </div>
-              <h2 className="text-base font-bold">What This Means</h2>
+              <h2 className="text-base font-bold">{t.moles.whatThisMeans}</h2>
             </div>
             <p className="text-sm text-on-surface leading-relaxed">
               {scan.summary ?? scan.notes}
             </p>
             <p className="text-[10px] text-on-surface-variant italic">
-              For monitoring purposes only — not a medical diagnosis.
+              {t.moles.monitoringDisclaimer}
             </p>
           </section>
 
@@ -178,10 +191,10 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-red-700 dark:text-red-400 text-sm mb-1">
-                  Consult a Dermatologist
+                  {t.moles.consultDerm}
                 </h3>
                 <p className="text-xs text-red-600/80 dark:text-red-400/80 leading-relaxed">
-                  This scan shows elevated indicators. We recommend scheduling a professional skin examination.
+                  {t.moles.consultDermBody}
                 </p>
               </div>
             </section>
@@ -269,36 +282,43 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               <div>
                 <p className="text-sm font-bold">{t.moles.nextScan}</p>
                 <p className="text-xs text-on-surface-variant">
-                  {nextScanDate(scan.created_at, scan.risk_level)}
+                  {nextScanDate(scan.created_at, scan.risk_level, locale)}
                   {" · "}
-                  {scan.risk_level === "high" ? "in 2 weeks" : "in 6 weeks"}
+                  {scan.risk_level === "high" ? t.moles.inTwoWeeks : t.moles.inSixWeeks}
                 </p>
               </div>
             </div>
           </section>
 
-          {/* ── Actions: New Scan + Share Report ── */}
-          <section className="flex gap-3 pt-1">
+          {/* ── Actions: New Scan + Share + PDF + Delete ── */}
+          <section className="flex gap-3 pt-1 no-print">
             <Link
               href="/scan"
-              className="flex-1 bg-primary-gradient text-on-primary font-bold rounded-2xl px-5 py-4 shadow-primary-glow active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+              className="flex-1 bg-primary-gradient text-on-primary font-bold rounded-2xl px-4 py-4 shadow-primary-glow active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
             >
               <Icon name="add_a_photo" />
               {t.moles.newScan}
             </Link>
             <button
               onClick={shareReport}
-              className="flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
             >
               <Icon name="share" />
-              Share
+              {t.moles.shareReport}
+            </button>
+            <button
+              onClick={downloadPdf}
+              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-surface-container font-bold text-sm active:scale-95 transition-all"
+              title={t.moles.downloadPdf}
+            >
+              <Icon name="picture_as_pdf" />
             </button>
             <DeleteButton id={scan.id} />
           </section>
 
         </div>
       </main>
-      <BottomNav />
+      <div className="no-print"><BottomNav /></div>
     </div>
   );
 }
