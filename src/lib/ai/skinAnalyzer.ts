@@ -49,7 +49,7 @@ function seeded(seed: number) {
 }
 
 export class MockSkinAnalyzer implements SkinAnalyzer {
-  async analyze({ bytes }: { bytes: Uint8Array }): Promise<AnalysisResult> {
+  async analyze({ bytes }: { bytes: Uint8Array; bodyArea?: string | null; mimeType?: string }): Promise<AnalysisResult> {
     const seed = hashBytes(bytes);
     const rnd = seeded(seed);
 

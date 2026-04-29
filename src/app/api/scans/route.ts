@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { skinAnalyzer } from "@/lib/ai/skinAnalyzer";
+import { skinAnalyzer, MockSkinAnalyzer } from "@/lib/ai/skinAnalyzer";
 import { MOCK, mockInsertScan, mockListScans } from "@/lib/mock";
 import { getCurrentUser } from "@/lib/auth";
 import type { Scan } from "@/lib/types";
@@ -46,7 +46,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType });
+  let analysis;
+  try {
+    analysis = await skinAnalyzer.analyze({ bytes, bodyArea, mimeType });
+  } catch (aiErr: unknown) {
+    console.error("[scans] AI analysis failed, using mock fallback:", aiErr);
+    analysis = await new MockSkinAnalyzer().analyze({ bytes, bodyArea, mimeType });
+  }
   const scanId = crypto.randomUUID();
 
   if (MOCK) {
@@ -87,23 +93,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: inserted, error } = await supabase
+    const insertPayload: Record<string, unknown> = {
+      id: scanId,
+      user_id: user.id,
+      image_path: path,
+      body_area: bodyArea,
+      notes: analysis.notes,
+      risk_score: analysis.riskScore,
+      risk_level: analysis.riskLevel,
+      status: analysis.status,
+      abcde: analysis.abcde,
+      summary: analysis.summary,
+    };
+
+    let inserted: { id: string } | null = null;
+    let error;
+    ({ data: inserted, error } = await supabase
       .from("scans")
-      .insert({
-        id: scanId,
-        user_id: user.id,
-        image_path: path,
-        body_area: bodyArea,
-        notes: analysis.notes,
-        summary: analysis.summary,
-        risk_score: analysis.riskScore,
-        risk_level: analysis.riskLevel,
-        status: analysis.status,
-        abcde: analysis.abcde,
-      })
+      .insert(insertPayload)
       .select("id")
-      .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      .single());
+
+    if (error?.message?.includes("summary")) {
+      delete insertPayload.summary;
+      ({ data: inserted, error } = await supabase
+        .from("scans")
+        .insert(insertPayload)
+        .select("id")
+        .single());
+    }
+    if (error || !inserted) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
     return NextResponse.json({ id: inserted.id, ...analysis });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
