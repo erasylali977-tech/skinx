@@ -1,12 +1,12 @@
 "use client";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 import { useI18n } from "@/lib/i18n/context";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { t } = useI18n();
   const items = [
     { href: "/home", label: t.nav.home, icon: "home" },
@@ -21,9 +21,9 @@ export function BottomNav() {
           pathname === item.href ||
           (item.href !== "/home" && pathname.startsWith(item.href));
         return (
-          <button
+          <Link
             key={item.href}
-            onClick={() => router.push(item.href)}
+            href={item.href}
             style={{ touchAction: "manipulation" }}
             className={cn(
               "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-2xl transition-colors duration-150",
@@ -36,7 +36,7 @@ export function BottomNav() {
             <span className="text-[11px] font-medium tracking-wide uppercase">
               {item.label}
             </span>
-          </button>
+          </Link>
         );
       })}
     </nav>
