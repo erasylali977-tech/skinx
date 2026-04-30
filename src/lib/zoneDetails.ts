@@ -94,3 +94,11 @@ export const ZONE_DETAILS: ZoneDetail[] = [
 export const ZONE_DETAIL_MAP = Object.fromEntries(
   ZONE_DETAILS.map((z) => [z.id, z])
 ) as Record<ImageZoneId, ZoneDetail>;
+
+/** Returns the localized zone name for any stored body_area slug. */
+export function getZoneDisplayLabel(zone: string | null | undefined, locale: Locale): string {
+  if (!zone) return "";
+  const detail = ZONE_DETAIL_MAP[zone as ImageZoneId];
+  if (detail) return detail.name[locale];
+  return zone;
+}

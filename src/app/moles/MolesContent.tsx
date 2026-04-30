@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
-import { getZoneLabel } from "@/lib/bodyZones";
+import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 
 type Props = {
   scans: Scan[];
@@ -58,7 +58,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={thumbs[i] as string}
-                      alt={getZoneLabel(s.body_area, locale) || t.home.skinCheck}
+                      alt={getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -70,7 +70,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-on-surface text-base leading-tight truncate">
-                      {getZoneLabel(s.body_area, locale) || t.home.skinCheck}
+                      {getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
                     </h3>
                     <span
                       className={cn(

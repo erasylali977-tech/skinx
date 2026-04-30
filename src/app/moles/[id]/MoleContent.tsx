@@ -7,7 +7,7 @@ import { DeleteButton } from "./DeleteButton";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
-import { getZoneLabel } from "@/lib/bodyZones";
+import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 
 function nextScanDate(createdAt: string, level: "low" | "medium" | "high", locale: string): string {
   const d = new Date(createdAt);
@@ -100,7 +100,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
 
   async function sharePdfReport() {
     // Try native share first; fall back to print-as-PDF
-    const text = `SkinX — ${getZoneLabel(scan.body_area, locale) || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
+    const text = `SkinX — ${getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try { await navigator.share({ title: "SkinX Scan Report", text }); return; } catch { /* fall through */ }
     }
@@ -143,7 +143,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               {t.moles.spotTracker}
             </p>
             <h1 className="text-white text-2xl font-extrabold tracking-tight leading-tight">
-              {getZoneLabel(scan.body_area, locale) || t.moles.skinCheck}
+              {getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}
             </h1>
             <p className="text-white/60 text-xs mt-1">{formatDate(scan.created_at)}</p>
           </div>
