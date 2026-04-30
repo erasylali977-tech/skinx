@@ -336,7 +336,7 @@ export function ScanClient() {
                 {selectedZone ? ZONE_DETAIL_MAP[selectedZone].name[locale] : t.scan.selectZone}
               </p>
               <p className={`text-[10px] mt-0.5 ${selectedZone ? "text-emerald-500/60" : "text-on-surface-variant/60"}`}>
-                {selectedZone ? t.scan.selectZoneHint : "Нажмите чтобы выбрать зону"}
+                {selectedZone ? t.scan.selectZoneHint : t.scan.tapBodyArea}
               </p>
             </div>
             <Icon name="chevron_right" className={`text-sm ${selectedZone ? "text-emerald-500/60" : "text-on-surface-variant/40"}`} />

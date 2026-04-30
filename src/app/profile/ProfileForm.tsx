@@ -26,6 +26,7 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
   const [pending, start] = useTransition();
   const [nickname, setNickname] = useState<string>(initial?.nickname ?? "");
   const [avatar, setAvatar] = useState<string>(initial?.avatar ?? "👤");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [age, setAge] = useState<string>(initial?.age_range ?? "");
   const [sex, setSex] = useState<string>(initial?.sex ?? "");
   const [skinType, setSkinType] = useState<string>(initial?.skin_type ?? "II");
@@ -44,6 +45,31 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
     { value: "Previous skin cancer", label: t.profile.risks.previousCancer },
     { value: "Use tanning beds", label: t.profile.risks.tanningBeds },
   ];
+
+  async function handleAvatarFile(file: File) {
+    if (MOCK) {
+      setAvatar(URL.createObjectURL(file));
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${user.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatar(data.publicUrl + `?t=${Date.now()}`);
+    } catch (e) {
+      console.error("Avatar upload failed:", e);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   function toggleRisk(r: string) {
     setRisks((prev) =>
@@ -99,7 +125,7 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
       {/* Avatar & Nickname Section */}
       <section className="bg-surface-container-lowest rounded-xl p-6 space-y-6 shadow-ambient">
         <div className="flex flex-col items-center">
-          <AvatarPicker value={avatar} onChange={setAvatar} />
+          <AvatarPicker value={avatar} onChange={setAvatar} onFileSelect={handleAvatarFile} uploading={uploadingAvatar} />
         </div>
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-on-surface-variant uppercase tracking-wider">

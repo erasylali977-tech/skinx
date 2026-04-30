@@ -75,8 +75,13 @@ export function AccountContent({ email, full_name, profile }: Props) {
 
         {/* Avatar + name + edit */}
         <section className="flex flex-col items-center pt-6 pb-2 gap-3">
-          <div className="w-24 h-24 rounded-full bg-primary-gradient flex items-center justify-center text-5xl shadow-primary-glow select-none">
-            {avatar}
+          <div className="w-24 h-24 rounded-full bg-primary-gradient flex items-center justify-center text-5xl shadow-primary-glow select-none overflow-hidden">
+            {avatar.startsWith("http") || avatar.startsWith("data:") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              avatar
+            )}
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-extrabold tracking-tight">{displayName}</h1>

@@ -63,6 +63,12 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Storage bucket for user avatars (public read):
+-- insert into storage.buckets (id, name, public) values ('avatars','avatars',true) on conflict do nothing;
+-- create policy "avatars_user_rw" on storage.objects
+--   for all using (bucket_id = 'avatars' and auth.uid()::text = split_part(name, '.', 1))
+--   with check (bucket_id = 'avatars' and auth.uid()::text = split_part(name, '.', 1));
+
 -- Storage bucket: create in Supabase UI named "scans" (private).
 -- Storage policies (run once):
 -- insert into storage.buckets (id, name, public) values ('scans','scans',false) on conflict do nothing;

@@ -1,15 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 import { useI18n } from "@/lib/i18n/context";
 
 // Skin/medical themed emoji + some general friendly ones like iCloud
 const AVATAR_OPTIONS = [
-  // Skin/medical themed
-  "🩺", "🩹", "💊", "🏥", "🧬", "🔬", "🧪", "🫀", "🫁", "🧠",
   // Faces
-  "😀", "😎", "🤓", "😊", "🙂", "😌", "🥰", "😍", "🤩", "🤠",
+  "😀", "😎", "🤓", "😊", "🙂", "�", "�", "😍", "�", "�",
+  // Skin/medical themed
+  "🩺", "🩹", "💊", "🏥", "🧬", "�", "�", "🫀", "�", "�",
   // Nature/animals
   "🌸", "🌻", "🌿", "🍀", "🌵", "🐶", "🐱", "🐭", "🐰", "🦊",
   "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐙", "🦄",
@@ -21,31 +21,65 @@ const AVATAR_OPTIONS = [
   "💯", "♻️", "🔔", "📱", "💻", "🔋", "🔑", "🎁", "🎈", "🎉",
 ];
 
+function isUrl(v: string | null | undefined) {
+  return !!(v && (v.startsWith("http") || v.startsWith("data:")));
+}
+
 interface Props {
   value: string | null;
   onChange: (avatar: string) => void;
+  onFileSelect?: (file: File) => void;
+  uploading?: boolean;
 }
 
-export function AvatarPicker({ value, onChange }: Props) {
+export function AvatarPicker({ value, onChange, onFileSelect, uploading }: Props) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (onFileSelect) {
+      onFileSelect(file);
+    } else {
+      onChange(URL.createObjectURL(file));
+    }
+    setIsOpen(false);
+    e.target.value = "";
+  }
 
   return (
     <div className="flex flex-col items-center gap-4">
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+
       {/* Selected avatar display */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        disabled={uploading}
         className={cn(
-          "w-24 h-24 rounded-full bg-surface-container-high flex items-center justify-center text-5xl",
+          "w-24 h-24 rounded-full flex items-center justify-center text-5xl overflow-hidden",
           "border-2 border-primary/30 hover:border-primary transition-all",
           "shadow-ambient hover:shadow-primary-glow",
-          "relative group"
+          "relative group",
+          isUrl(value) ? "bg-surface-container-high" : "bg-surface-container-high"
         )}
       >
-        {value || "👤"}
-        <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <Icon name="edit" className="text-white text-2xl" />
-        </div>
+        {isUrl(value) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value!} alt="" className="w-full h-full object-cover" />
+        ) : (
+          value || "👤"
+        )}
+        {uploading ? (
+          <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+            <span className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Icon name="edit" className="text-white text-2xl" />
+          </div>
+        )}
       </button>
       <p className="text-sm text-on-surface-variant">{t.profile.tapToChangeAvatar}</p>
 
@@ -61,7 +95,17 @@ export function AvatarPicker({ value, onChange }: Props) {
               <Icon name="close" className="text-on-surface-variant" />
             </button>
           </div>
-          <div className="grid grid-cols-8 gap-2 max-h-64 overflow-y-auto p-1">
+
+          {/* Upload photo button */}
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="w-full flex items-center gap-3 px-4 py-3 mb-3 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-colors"
+          >
+            <Icon name="add_a_photo" className="text-primary text-xl" />
+            <span className="text-sm font-semibold text-primary">{t.profile.uploadPhoto}</span>
+          </button>
+
+          <div className="grid grid-cols-8 gap-2 max-h-56 overflow-y-auto p-1">
             {AVATAR_OPTIONS.map((emoji) => (
               <button
                 key={emoji}

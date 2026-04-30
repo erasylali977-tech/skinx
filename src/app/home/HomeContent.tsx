@@ -7,6 +7,7 @@ import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { AppHeader } from "@/components/AppHeader";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDateTime } from "@/lib/utils";
+import { getZoneLabel } from "@/lib/bodyZones";
 import type { Scan } from "@/lib/types";
 
 type Props = {
@@ -16,7 +17,7 @@ type Props = {
 };
 
 export function HomeContent({ firstName, scans, thumbs }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-28">
@@ -98,7 +99,7 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={thumbs[i] as string}
-                        alt={s.body_area || t.home.skinCheck}
+                        alt={getZoneLabel(s.body_area, locale) || t.home.skinCheck}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -112,7 +113,7 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                   </div>
                   <div>
                     <h3 className="font-bold text-on-surface text-lg mb-1">
-                      {s.body_area || t.home.skinCheck}
+                      {getZoneLabel(s.body_area, locale) || t.home.skinCheck}
                     </h3>
                     <div className="flex items-center text-on-surface-variant text-sm gap-1.5">
                       <Icon name="calendar_today" className="text-[16px]" />

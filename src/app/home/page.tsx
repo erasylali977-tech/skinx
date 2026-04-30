@@ -30,7 +30,7 @@ export default async function HomePage() {
   const recent = scans.slice(0, 6);
   const thumbs = await Promise.all(recent.map((s) => resolveThumb(s.image_path)));
 
-  const firstName = (profile?.full_name || user.email || "there")
+  const firstName = (profile?.nickname || profile?.full_name || user.email || "there")
     .toString()
     .split(" ")[0]
     .split("@")[0];

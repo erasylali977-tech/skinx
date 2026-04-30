@@ -96,11 +96,14 @@ const LANG_MAP: Record<string, string> = {
   en: "English",
 };
 
-function buildPrompt(locale?: string): string {
+function buildPrompt(locale?: string, bodyArea?: string | null): string {
   const lang = LANG_MAP[locale ?? "en"] ?? "English";
-  return `You are a dermatology AI assistant helping patients monitor their skin health.
+  const areaHint = bodyArea ? `\nBody area being examined: ${bodyArea}` : "";
+  return `⚠️ LANGUAGE REQUIREMENT: You MUST write the "notes" and "summary" JSON fields in ${lang} ONLY. No other language is acceptable.
+
+You are a dermatology AI assistant helping patients monitor their skin health.
 Analyze the skin lesion or area visible in the image. It may be a mole, wart (verruca), age spot, skin tag, birthmark, rash, freckle, or any other skin formation.
-Apply general dermatology and dermoscopy evaluation criteria.
+Apply general dermatology and dermoscopy evaluation criteria.${areaHint}
 Return ONLY a valid JSON object — no markdown fences, no explanation, just raw JSON.
 
 JSON structure (all numbers are integers 0-100):
@@ -115,8 +118,8 @@ JSON structure (all numbers are integers 0-100):
     "diameter": <0=tiny <2mm, 100=large >10mm>,
     "evolution": <0=stable/no visible changes, 100=significant changes observed>
   },
-  "notes": "<One concise clinical observation sentence>",
-  "summary": "<2-3 plain language sentences: what was found, what it likely is, and the recommended next step for the patient>"
+  "notes": "<One concise clinical observation sentence in ${lang}>",
+  "summary": "<2-3 plain language sentences in ${lang}: what was found, what it likely is, and the recommended next step>"
 }
 
 Rules:
@@ -125,7 +128,7 @@ Rules:
 - Warts/verrucas are typically low risk — score accordingly
 - If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis
-- IMPORTANT: Write the "notes" and "summary" fields EXCLUSIVELY in ${lang}. Do NOT use any other language.
+- ⚠️ MANDATORY: "notes" and "summary" MUST be written in ${lang}. This is a strict requirement.
 - Return ONLY the JSON object, no markdown, no explanation`;
 }
 
@@ -154,10 +157,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     mimeType?: string;
     locale?: string;
   }): Promise<AnalysisResult> {
-    const basePrompt = buildPrompt(locale);
-    const prompt = bodyArea
-      ? `${basePrompt}\n\nBody area: ${bodyArea}`
-      : basePrompt;
+    const prompt = buildPrompt(locale, bodyArea);
 
     const body = JSON.stringify({
       contents: [{
@@ -259,8 +259,7 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
     mimeType?: string;
     locale?: string;
   }): Promise<AnalysisResult> {
-    const basePrompt = buildPrompt(locale);
-    const prompt = bodyArea ? `${basePrompt}\n\nBody area: ${bodyArea}` : basePrompt;
+    const prompt = buildPrompt(locale, bodyArea);
     const b64 = Buffer.from(bytes).toString("base64");
     const imgMime = mimeType ?? "image/jpeg";
 
