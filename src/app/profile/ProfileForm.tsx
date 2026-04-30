@@ -7,6 +7,13 @@ import { AvatarPicker } from "@/components/AvatarPicker";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/context";
+import type { Locale } from "@/lib/i18n/translations";
+
+const LANG_OPTIONS: { locale: Locale; flag: string; label: string }[] = [
+  { locale: "kk", flag: "🇰🇿", label: "Қазақша" },
+  { locale: "ru", flag: "🇷🇺", label: "Русский" },
+  { locale: "en", flag: "🇬🇧", label: "English" },
+];
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
 
@@ -22,7 +29,7 @@ const SKIN_TYPES = [
 
 export function ProfileForm({ initial }: { initial: Profile | null }) {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const [pending, start] = useTransition();
   const [nickname, setNickname] = useState<string>(initial?.nickname ?? "");
   const [avatar, setAvatar] = useState<string>(initial?.avatar ?? "👤");
@@ -122,6 +129,32 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
 
   return (
     <div className="space-y-6 pb-24">
+      {/* Language Section */}
+      <section className="bg-surface-container-lowest rounded-xl p-5 shadow-ambient">
+        <label className="block text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t.profile.interfaceLang}
+        </label>
+        <div className="flex gap-3">
+          {LANG_OPTIONS.map((opt) => (
+            <button
+              key={opt.locale}
+              type="button"
+              onClick={() => setLocale(opt.locale)}
+              className={`flex-1 flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 transition-all ${
+                locale === opt.locale
+                  ? "border-primary bg-primary/10"
+                  : "border-outline-variant/40 bg-surface-container-low hover:bg-surface-container"
+              }`}
+            >
+              <span className="text-3xl leading-none">{opt.flag}</span>
+              <span className={`text-xs font-semibold ${locale === opt.locale ? "text-primary" : "text-on-surface-variant"}`}>
+                {opt.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Avatar & Nickname Section */}
       <section className="bg-surface-container-lowest rounded-xl p-6 space-y-6 shadow-ambient">
         <div className="flex flex-col items-center">
