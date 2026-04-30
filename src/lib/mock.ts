@@ -43,6 +43,8 @@ export function mockSignUp(email: string, password: string, fullName: string | n
   s.profiles.set(id, {
     id,
     full_name: fullName,
+    nickname: null,
+    avatar: "👤",
     age_range: null,
     sex: null,
     skin_type: null,
@@ -78,6 +80,8 @@ export function mockUpsertProfile(uid: string, patch: Partial<Profile>): Profile
     s.profiles.get(uid) ?? {
       id: uid,
       full_name: null,
+      nickname: null,
+      avatar: "👤",
       age_range: null,
       sex: null,
       skin_type: null,

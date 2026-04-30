@@ -21,6 +21,8 @@ export type Scan = {
 export type Profile = {
   id: string;
   full_name: string | null;
+  nickname: string | null;
+  avatar: string | null;
   age_range: string | null;
   sex: string | null;
   skin_type: string | null;

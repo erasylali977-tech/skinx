@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Icon } from "@/components/Icon";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/context";
@@ -23,6 +24,8 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
   const router = useRouter();
   const { t } = useI18n();
   const [pending, start] = useTransition();
+  const [nickname, setNickname] = useState<string>(initial?.nickname ?? "");
+  const [avatar, setAvatar] = useState<string>(initial?.avatar ?? "👤");
   const [age, setAge] = useState<string>(initial?.age_range ?? "");
   const [sex, setSex] = useState<string>(initial?.sex ?? "");
   const [skinType, setSkinType] = useState<string>(initial?.skin_type ?? "II");
@@ -53,6 +56,8 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
     start(async () => {
       try {
         const payload = {
+          nickname: nickname.trim() || null,
+          avatar: avatar || "👤",
           age_range: age || null,
           sex: sex || null,
           skin_type: skinType || null,
@@ -91,6 +96,26 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
 
   return (
     <div className="space-y-6 pb-24">
+      {/* Avatar & Nickname Section */}
+      <section className="bg-surface-container-lowest rounded-xl p-6 space-y-6 shadow-ambient">
+        <div className="flex flex-col items-center">
+          <AvatarPicker value={avatar} onChange={setAvatar} />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-on-surface-variant uppercase tracking-wider">
+            {t.profile.nickname} ({t.common.optional})
+          </label>
+          <input
+            type="text"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder={t.profile.nicknamePlaceholder}
+            maxLength={30}
+            className="w-full bg-surface-container-low rounded-lg px-4 py-3 text-lg font-medium placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      </section>
+
       <section className="bg-surface-container-lowest rounded-xl p-6 space-y-8 shadow-ambient">
         <h2 className="text-xl font-bold tracking-tight">{t.profile.demographics}</h2>
 

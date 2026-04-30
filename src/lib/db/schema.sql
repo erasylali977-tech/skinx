@@ -4,6 +4,8 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
   full_name text,
+  nickname text,
+  avatar text, -- emoji or icon name
   age_range text,
   sex text,
   skin_type text,

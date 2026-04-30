@@ -4,12 +4,15 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Icon } from "@/components/Icon";
 import { SignOutButton } from "./SignOutButton";
+import { DeleteAccountButton } from "./DeleteAccountButton";
 import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   email: string;
   full_name?: string | null;
   profile: {
+    nickname?: string | null;
+    avatar?: string | null;
     age_range?: string | null;
     sex?: string | null;
     skin_type?: string | null;
@@ -60,8 +63,10 @@ export function AccountContent({ email, full_name, profile }: Props) {
   const skinTypeIndex = SKIN_TYPES.indexOf(profile?.skin_type ?? "");
   const skinBarPos = skinTypeIndex >= 0 ? skinTypeIndex / (SKIN_TYPES.length - 1) : null;
   const risks = profile?.risk_factors ?? [];
+  const avatar = profile?.avatar || "👤";
+  const nickname = profile?.nickname;
   const initials = getInitials(full_name, email);
-  const displayName = full_name || email.split("@")[0];
+  const displayName = nickname || full_name || email.split("@")[0];
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-32 pt-20">
@@ -70,8 +75,8 @@ export function AccountContent({ email, full_name, profile }: Props) {
 
         {/* Avatar + name + edit */}
         <section className="flex flex-col items-center pt-6 pb-2 gap-3">
-          <div className="w-24 h-24 rounded-full bg-primary-gradient flex items-center justify-center text-[2rem] font-bold text-white shadow-primary-glow select-none">
-            {initials}
+          <div className="w-24 h-24 rounded-full bg-primary-gradient flex items-center justify-center text-5xl shadow-primary-glow select-none">
+            {avatar}
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-extrabold tracking-tight">{displayName}</h1>
@@ -174,6 +179,9 @@ export function AccountContent({ email, full_name, profile }: Props) {
         </section>
 
         <SignOutButton />
+        <div className="border-t border-outline-variant/30 pt-2">
+          <DeleteAccountButton />
+        </div>
       </main>
       <BottomNav />
     </div>

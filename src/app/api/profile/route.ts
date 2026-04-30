@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   if (MOCK) {
     const next = mockUpsertProfile(user.id, {
+      nickname: body.nickname ?? null,
+      avatar: body.avatar ?? "👤",
       age_range: body.age_range ?? null,
       sex: body.sex ?? null,
       skin_type: body.skin_type ?? null,
@@ -44,6 +46,8 @@ export async function POST(req: NextRequest) {
       .upsert({
         id: user.id,
         full_name: body.full_name ?? user.full_name ?? null,
+        nickname: body.nickname ?? null,
+        avatar: body.avatar ?? "👤",
         age_range: body.age_range ?? null,
         sex: body.sex ?? null,
         skin_type: body.skin_type ?? null,
