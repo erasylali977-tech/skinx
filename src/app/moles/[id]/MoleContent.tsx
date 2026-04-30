@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -23,40 +24,49 @@ type Props = {
   baselineUrl: string | null;
 };
 
-// ── Health Score SVG Gauge ─────────────────────────────────────────────────
+// ── Health Score Speedometer ───────────────────────────────────────────────
 function ScoreGauge({ score, level }: { score: number; level: "low" | "medium" | "high" }) {
-  const arcLen = 2 * Math.PI * 54 * 0.75; // 270° arc of r=54
-  const healthScore = 100 - score; // invert: high risk = low health
+  const [displayed, setDisplayed] = useState(0);
+  const [animated, setAnimated] = useState(false);
+  const healthScore = 100 - score;
+  const color = level === "high" ? "#ef4444" : level === "medium" ? "#f59e0b" : "#10b981";
 
-  const trackColor = level === "high" ? "#ef4444" : level === "medium" ? "#f59e0b" : "#10b981";
+  useEffect(() => {
+    const t = setTimeout(() => setAnimated(true), 60);
+    let frame: number;
+    const start = performance.now();
+    const duration = 900;
+    function tick(now: number) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplayed(Math.round(eased * healthScore));
+      if (p < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+  }, [healthScore]);
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width="140" height="120" viewBox="0 0 140 120" className="-mb-2">
-        <path
-          d="M 14 105 A 54 54 0 1 1 126 105"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="10"
-          strokeLinecap="round"
-          className="text-surface-container-high"
+    <div className="w-full flex flex-col gap-3 py-1">
+      <div className="flex items-baseline justify-center gap-1.5">
+        <span className="text-5xl font-black tabular-nums" style={{ color }}>{displayed}</span>
+        <span className="text-2xl font-bold text-on-surface-variant">/100</span>
+      </div>
+      <div className="relative h-3 rounded-full"
+           style={{ background: "linear-gradient(to right, #ef4444 0%, #f59e0b 45%, #10b981 100%)" }}>
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-[3px] shadow-lg"
+          style={{
+            left: `calc(${animated ? healthScore : 0}% - 10px)`,
+            borderColor: color,
+            transition: animated ? "left 0.9s cubic-bezier(0.34,1.56,0.64,1)" : "none",
+          }}
         />
-        <path
-          d="M 14 105 A 54 54 0 1 1 126 105"
-          fill="none"
-          stroke={trackColor}
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={`${(arcLen * (score / 100)).toFixed(1)} ${arcLen}`}
-          style={{ transition: "stroke-dasharray 0.8s ease" }}
-        />
-        <text x="70" y="85" textAnchor="middle" className="fill-on-surface" fontSize="28" fontWeight="800">
-          {healthScore}
-        </text>
-        <text x="70" y="100" textAnchor="middle" className="fill-on-surface-variant" fontSize="10">
-          / 100
-        </text>
-      </svg>
+      </div>
+      <div className="flex justify-between text-[10px] font-semibold text-on-surface-variant px-1">
+        <span>0</span>
+        <span>100</span>
+      </div>
     </div>
   );
 }
@@ -99,12 +109,99 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
   }[scan.risk_level];
 
   async function sharePdfReport() {
-    // Try native share first; fall back to print-as-PDF
-    const text = `SkinX — ${getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}\n${t.riskLevels[scan.risk_level]} (${scan.risk_score}/100)\n\n${scan.summary ?? scan.notes}`;
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try { await navigator.share({ title: "SkinX Scan Report", text }); return; } catch { /* fall through */ }
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const zone = getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck;
+    const healthScore = 100 - scan.risk_score;
+    const rc = scan.risk_level === "high" ? [239, 68, 68] : scan.risk_level === "medium" ? [245, 158, 11] : [16, 185, 129];
+
+    // Header
+    doc.setFillColor(61, 122, 237);
+    doc.rect(0, 0, 210, 30, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(22);
+    doc.text("SkinX", 15, 16);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text("Skin Health Report", 15, 24);
+    doc.text(formatDate(scan.created_at), 195, 24, { align: "right" });
+
+    // Zone title
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+    doc.text(zone, 15, 46);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(formatDate(scan.created_at), 15, 54);
+
+    // Score box
+    doc.setFillColor(rc[0], rc[1], rc[2]);
+    doc.roundedRect(15, 60, 85, 28, 4, 4, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(26);
+    doc.text(`${healthScore}/100`, 57, 78, { align: "center" });
+    doc.setFontSize(7);
+    doc.text(t.moles.skinHealthScore.toUpperCase(), 57, 84, { align: "center" });
+
+    // Risk badge
+    doc.setFillColor(245, 245, 250);
+    doc.roundedRect(110, 60, 85, 28, 4, 4, "F");
+    doc.setTextColor(rc[0], rc[1], rc[2]);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text(t.riskLevels[scan.risk_level], 152, 72, { align: "center" });
+    doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    doc.text(`${t.moles.score}: ${scan.risk_score}/100`, 152, 80, { align: "center" });
+
+    // Summary
+    let y = 102;
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text(t.moles.whatThisMeans, 15, y); y += 7;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+    const summaryLines = doc.splitTextToSize(scan.summary ?? scan.notes ?? "", 180);
+    doc.text(summaryLines, 15, y);
+    y += summaryLines.length * 5.5 + 10;
+
+    // ABCDE
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text(t.moles.abcdeMetrics, 15, y); y += 8;
+    const rows = [
+      { l: "A", d: t.moles.abcde.asymmetry, v: scan.abcde.asymmetry },
+      { l: "B", d: t.moles.abcde.border,    v: scan.abcde.border },
+      { l: "C", d: t.moles.abcde.color,     v: scan.abcde.color },
+      { l: "D", d: t.moles.abcde.diameter,  v: scan.abcde.diameter },
+      { l: "E", d: t.moles.abcde.evolution, v: scan.abcde.evolution },
+    ];
+    for (const row of rows) {
+      const br = row.v >= 60 ? [239, 68, 68] : row.v >= 35 ? [245, 158, 11] : [16, 185, 129];
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(80, 80, 80);
+      doc.text(row.l, 15, y);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(50, 50, 50);
+      doc.text(row.d, 25, y);
+      doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
+      doc.text(String(row.v), 195, y, { align: "right" });
+      doc.setFillColor(220, 220, 225); doc.roundedRect(25, y + 2, 150, 2.5, 1, 1, "F");
+      doc.setFillColor(br[0], br[1], br[2]); doc.roundedRect(25, y + 2, 150 * row.v / 100, 2.5, 1, 1, "F");
+      y += 11;
     }
-    window.print();
+
+    // Footer
+    doc.setFillColor(240, 242, 250); doc.rect(0, 268, 210, 29, "F");
+    doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(130, 130, 130);
+    doc.text(doc.splitTextToSize(t.moles.monitoringDisclaimer, 175), 15, 276);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+    doc.text("skinx.fit", 195, 290, { align: "right" });
+
+    const blob = doc.output("blob");
+    const fileName = `skinx-${scan.id.slice(0, 8)}.pdf`;
+    const file = new File([blob], fileName, { type: "application/pdf" });
+    if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "SkinX Report" }); return; } catch { /* fall through */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = fileName; a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -152,8 +249,8 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
         <div className="px-4 space-y-4">
 
           {/* ── Health score gauge ── */}
-          <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-ambient flex flex-col items-center gap-1">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
+          <section className="bg-surface-container-lowest rounded-2xl px-5 pt-4 pb-5 shadow-ambient">
+            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-3">
               {t.moles.skinHealthScore}
             </p>
             <ScoreGauge score={scan.risk_score} level={scan.risk_level} />

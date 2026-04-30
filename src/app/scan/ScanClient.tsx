@@ -186,25 +186,23 @@ export function ScanClient() {
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => changeGender("male")}
-              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
                 gender === "male"
                   ? "bg-blue-500 text-white shadow-lg shadow-blue-500/40"
                   : "bg-surface-container text-on-surface-variant"
               }`}
             >
-              <span className="text-xl leading-none">♂</span>
-              <span className="text-[10px] mt-0.5">{t.scan.male}</span>
+              <span className="text-3xl leading-none">♂</span>
             </button>
             <button
               onClick={() => changeGender("female")}
-              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
                 gender === "female"
                   ? "bg-pink-500 text-white shadow-lg shadow-pink-500/40"
                   : "bg-surface-container text-on-surface-variant"
               }`}
             >
-              <span className="text-xl leading-none">♀</span>
-              <span className="text-[10px] mt-0.5">{t.scan.female}</span>
+              <span className="text-3xl leading-none">♀</span>
             </button>
           </div>
         </header>
