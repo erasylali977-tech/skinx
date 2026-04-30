@@ -183,19 +183,29 @@ export function ScanClient() {
           </div>
 
           {/* Gender toggle */}
-          <div className="flex bg-surface-container rounded-full p-0.5 gap-0.5">
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => changeGender("male")}
-              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                gender === "male" ? "bg-primary text-white" : "text-on-surface-variant"
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
+                gender === "male"
+                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/40"
+                  : "bg-surface-container text-on-surface-variant"
               }`}
-            >♂</button>
+            >
+              <span className="text-xl leading-none">♂</span>
+              <span className="text-[10px] mt-0.5">{t.scan.male}</span>
+            </button>
             <button
               onClick={() => changeGender("female")}
-              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                gender === "female" ? "bg-primary text-white" : "text-on-surface-variant"
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
+                gender === "female"
+                  ? "bg-pink-500 text-white shadow-lg shadow-pink-500/40"
+                  : "bg-surface-container text-on-surface-variant"
               }`}
-            >♀</button>
+            >
+              <span className="text-xl leading-none">♀</span>
+              <span className="text-[10px] mt-0.5">{t.scan.female}</span>
+            </button>
           </div>
         </header>
 
