@@ -67,6 +67,86 @@ function analyzeFrame(
   };
 }
 
+// ── Lesion detection in sample canvas ────────────────────────────────────
+// Finds pixels significantly darker or chromatically different from average skin.
+// Returns bounding box in sample (200x200) coordinates, or null if not found.
+function detectLesionInSample(
+  canvas: HTMLCanvasElement
+): { x: number; y: number; w: number; h: number } | null {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx || canvas.width < 10) return null;
+  const SW = canvas.width, SH = canvas.height;
+  const { data: d } = ctx.getImageData(0, 0, SW, SH);
+
+  // Average color of the inner 40% region (the lesion candidate zone)
+  const s = Math.floor(SW * 0.3), e = Math.floor(SW * 0.7);
+  let sumR = 0, sumG = 0, sumB = 0, n = 0;
+  for (let row = s; row < e; row += 2) {
+    for (let col = s; col < e; col += 2) {
+      const i = (row * SW + col) * 4;
+      sumR += d[i]; sumG += d[i + 1]; sumB += d[i + 2]; n++;
+    }
+  }
+  if (!n) return null;
+  const avgR = sumR / n, avgG = sumG / n, avgB = sumG / n;
+  const avgLum = (avgR + avgG + avgB) / 3;
+
+  // Detect pixels that are notably darker OR strongly chromatically different
+  const margin = Math.floor(SW * 0.1);
+  let minX = SW, minY = SH, maxX = 0, maxY = 0, cnt = 0;
+  for (let row = margin; row < SH - margin; row++) {
+    for (let col = margin; col < SW - margin; col++) {
+      const i = (row * SW + col) * 4;
+      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
+      const chroma = (Math.abs(d[i] - avgR) + Math.abs(d[i + 1] - avgG) + Math.abs(d[i + 2] - avgB)) / 3;
+      if (avgLum - lum > 30 || chroma > 45) {
+        if (col < minX) minX = col;
+        if (col > maxX) maxX = col;
+        if (row < minY) minY = row;
+        if (row > maxY) maxY = row;
+        cnt++;
+      }
+    }
+  }
+  if (cnt < 150) return null;
+  const w = maxX - minX, h = maxY - minY;
+  if (w < 15 || h < 15) return null;
+  return { x: minX, y: minY, w, h };
+}
+
+// ── Draw lesion bounding box overlay on a canvas ──────────────────────────
+function drawLesionOverlay(
+  canvas: HTMLCanvasElement,
+  box: { x: number; y: number; w: number; h: number } | null,
+  t: number
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!box) return;
+  const pulse = 0.65 + 0.35 * Math.abs(Math.sin(t / 600));
+  const { x, y, w, h } = box;
+  // Outer glow
+  ctx.shadowColor = "rgba(255,80,60,0.6)";
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = `rgba(255,80,60,${(pulse * 0.5).toFixed(2)})`;
+  ctx.lineWidth = 5;
+  ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+  // Main box
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgba(255,80,60,${pulse.toFixed(2)})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // + crosshair
+  const cx = x + w / 2, cy = y + h / 2;
+  ctx.strokeStyle = `rgba(255,255,255,${pulse.toFixed(2)})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, cy); ctx.lineTo(cx + 9, cy);
+  ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
+  ctx.stroke();
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 type PermState = "idle" | "requesting" | "denied" | "granted" | "error";
 
@@ -79,15 +159,22 @@ interface Props {
 export function ScanCamera({ onCapture, onClose }: Props) {
   const { t } = useI18n();
 
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const sampleRef  = useRef<HTMLCanvasElement>(null); // analysis canvas (hidden)
-  const captureRef = useRef<HTMLCanvasElement>(null); // capture canvas (hidden)
-  const streamRef  = useRef<MediaStream | null>(null);
-  const rafRef     = useRef<number>(0);
+  const videoRef    = useRef<HTMLVideoElement>(null);
+  const sampleRef   = useRef<HTMLCanvasElement>(null); // analysis canvas (hidden)
+  const captureRef  = useRef<HTMLCanvasElement>(null); // capture canvas (hidden)
+  const overlayRef  = useRef<HTMLCanvasElement>(null); // lesion overlay canvas
+  const streamRef   = useRef<MediaStream | null>(null);
+  const rafRef      = useRef<number>(0);
+  const lesionBoxRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const aiCameraOnRef = useRef(true);
 
-  const [perm,   setPerm]   = useState<PermState>("idle");
-  const [facing, setFacing] = useState<"environment" | "user">("environment");
-  const [det,    setDet]    = useState({ skinPct: 0, brightness: 128, sharpness: 50 });
+  const [perm,           setPerm]          = useState<PermState>("idle");
+  const [facing,         setFacing]        = useState<"environment" | "user">("environment");
+  const [det,            setDet]           = useState({ skinPct: 0, brightness: 128, sharpness: 50 });
+  const [aiCameraOn,     setAiCameraOn]    = useState(true);
+  const [zoom,           setZoom]          = useState(1);
+  const [torch,          setTorch]         = useState(false);
+  const [lesionDetected, setLesionDetected] = useState(false);
 
   // ── Open camera stream ─────────────────────────────────────────────────
   // NOTE: we set perm("granted") BEFORE touching videoRef, because the
@@ -128,16 +215,35 @@ export function ScanCamera({ onCapture, onClose }: Props) {
     video.play().catch(() => {});
   }, [perm]);
 
-  // ── Detection loop at ~150 ms intervals ───────────────────────────────
+  // ── Keep aiCameraOnRef in sync with state ─────────────────────────────
+  useEffect(() => { aiCameraOnRef.current = aiCameraOn; }, [aiCameraOn]);
+
+  // ── Detection + overlay loop ───────────────────────────────────────────
   useEffect(() => {
     if (perm !== "granted") return;
     let last = 0;
     const loop = (now: number) => {
       rafRef.current = requestAnimationFrame(loop);
+      // Draw overlay every frame for smooth pulse
+      if (overlayRef.current) {
+        drawLesionOverlay(overlayRef.current, lesionBoxRef.current, now);
+      }
+      // Pixel analysis every 150 ms
       if (now - last < 150) return;
       last = now;
       if (videoRef.current && sampleRef.current) {
         setDet(analyzeFrame(videoRef.current, sampleRef.current));
+        if (aiCameraOnRef.current) {
+          const box = detectLesionInSample(sampleRef.current);
+          const SCALE = 256 / 200;
+          lesionBoxRef.current = box
+            ? { x: box.x * SCALE, y: box.y * SCALE, w: box.w * SCALE, h: box.h * SCALE }
+            : null;
+          setLesionDetected(!!box);
+        } else {
+          lesionBoxRef.current = null;
+          setLesionDetected(false);
+        }
       }
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -167,6 +273,17 @@ export function ScanCamera({ onCapture, onClose }: Props) {
     }, "image/jpeg", 0.92);
   }, [onCapture]);
 
+  // ── Torch toggle ───────────────────────────────────────────────────────
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torch;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      setTorch(next);
+    } catch { /* not supported on this device */ }
+  }, [torch]);
+
   // ── Flip front ↔ rear ─────────────────────────────────────────────────
   const flip = useCallback(() => {
     const next: "environment" | "user" = facing === "environment" ? "user" : "environment";
@@ -181,18 +298,23 @@ export function ScanCamera({ onCapture, onClose }: Props) {
   const skinOk    = det.skinPct    > 15;
   const ready     = skinOk && !isBlurry && !isDark && !isBright;
 
+  const aiLesionActive = aiCameraOn && lesionDetected;
+
   const statusText =
+    aiLesionActive ? "Новообразование найдено" :
     isDark   ? t.scan.tooDark :
     isBright ? t.scan.tooBright :
     isBlurry ? t.scan.blurry :
     skinOk   ? t.scan.skinDetected :
                t.scan.alignSkin;
 
-  const statusColor  = ready ? "text-emerald-400"
-    : (isDark || isBright || isBlurry) ? "text-amber-400"
-    : "text-white/70";
+  const statusColor =
+    aiLesionActive ? "text-red-400" :
+    ready ? "text-emerald-400" :
+    (isDark || isBright || isBlurry) ? "text-amber-400" :
+    "text-white/70";
 
-  const frameColor   = ready ? "border-emerald-400" : "border-[#4d9dff]";
+  const frameColor   = aiLesionActive ? "border-red-400" : ready ? "border-emerald-400" : "border-[#4d9dff]";
   const lineColor    = ready
     ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]"
     : "bg-[#4d9dff] shadow-[0_0_10px_rgba(77,157,255,0.7)]";
@@ -298,13 +420,14 @@ export function ScanCamera({ onCapture, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden">
 
-      {/* Live video feed */}
+      {/* Live video feed (zoom via CSS scale) */}
       <video
         ref={videoRef}
         playsInline
         muted
         autoPlay
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-150"
+        style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
       />
 
       {/* Gradient vignette overlay */}
@@ -324,13 +447,24 @@ export function ScanCamera({ onCapture, onClose }: Props) {
           <span className="text-white/70 text-xs font-medium tracking-wide uppercase">SkinX Scan</span>
         </div>
 
-        <button
-          onClick={flip}
-          className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform"
-          aria-label={t.scan.flipCamera}
-        >
-          <Icon name="flip_camera_ios" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={toggleTorch}
+            className={`w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center active:scale-90 transition-all ${
+              torch ? "bg-amber-400/90 text-gray-900" : "bg-black/50 text-white"
+            }`}
+            aria-label="Toggle torch"
+          >
+            <Icon name={torch ? "flash_on" : "flash_off"} />
+          </button>
+          <button
+            onClick={flip}
+            className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform"
+            aria-label={t.scan.flipCamera}
+          >
+            <Icon name="flip_camera_ios" />
+          </button>
+        </div>
       </header>
 
       {/* ── Viewfinder ── */}
@@ -342,6 +476,14 @@ export function ScanCamera({ onCapture, onClose }: Props) {
           <div className={`absolute top-0 right-0 w-9 h-9 border-t-[3px] border-r-[3px] ${frameColor} rounded-tr-[2rem] transition-colors duration-500`} />
           <div className={`absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] ${frameColor} rounded-bl-[2rem] transition-colors duration-500`} />
           <div className={`absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] ${frameColor} rounded-br-[2rem] transition-colors duration-500`} />
+
+          {/* Lesion detection overlay canvas */}
+          <canvas
+            ref={overlayRef}
+            width={256}
+            height={256}
+            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+          />
 
           {/* Sweep scan line — contained within frame */}
           <div
@@ -372,7 +514,9 @@ export function ScanCamera({ onCapture, onClose }: Props) {
 
         {/* Status badge */}
         <div className="flex items-center gap-2.5 bg-black/55 backdrop-blur-md px-5 py-2.5 rounded-full">
-          {ready ? (
+          {aiLesionActive ? (
+            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+          ) : ready ? (
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
           ) : (
             <span className="w-2 h-2 rounded-full bg-white/30 flex-shrink-0" />
@@ -454,6 +598,37 @@ export function ScanCamera({ onCapture, onClose }: Props) {
               {ready ? "Ready" : "Align"}
             </span>
           </div>
+        </div>
+
+        {/* Zoom slider */}
+        <div className="flex items-center gap-3 mt-5">
+          <Icon name="zoom_out" className="text-white/40 text-base flex-shrink-0" />
+          <input
+            type="range" min={1} max={3} step={0.05}
+            value={zoom}
+            onChange={e => setZoom(parseFloat(e.target.value))}
+            className="flex-1 h-1 rounded-full appearance-none bg-white/20 accent-[#4d9dff] cursor-pointer"
+          />
+          <Icon name="zoom_in" className="text-white/40 text-base flex-shrink-0" />
+        </div>
+
+        {/* AI Camera toggle row */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-2">
+            <Icon name="smart_toy" className="text-white/50 text-base" />
+            <span className="text-white/60 text-xs font-medium">AI Камера</span>
+          </div>
+          <button
+            onClick={() => setAiCameraOn(prev => !prev)}
+            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+              aiCameraOn ? "bg-primary" : "bg-white/20"
+            }`}
+            aria-label="Toggle AI Camera"
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
+              aiCameraOn ? "left-6" : "left-1"
+            }`} />
+          </button>
         </div>
       </div>
 

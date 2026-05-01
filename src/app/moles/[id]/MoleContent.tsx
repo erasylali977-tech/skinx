@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -17,6 +17,77 @@ function nextScanDate(createdAt: string, level: "low" | "medium" | "high", local
   return d.toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" });
 }
 
+// ── Canvas helpers (client-side only, called inside useEffect) ─────────────────
+function thermalColor(gray: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, gray / 255));
+  let r = 0, g = 0, b = 0;
+  if (t < 0.25)      { b = 1; g = t * 4; }
+  else if (t < 0.5)  { g = 1; b = 1 - (t - 0.25) * 4; }
+  else if (t < 0.75) { r = (t - 0.5) * 4; g = 1; }
+  else               { r = 1; g = 1 - (t - 0.75) * 4; }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function generateHeatmapUrl(img: HTMLImageElement): string {
+  const MAX = 400;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.round((img.naturalWidth || MAX) * scale);
+  const H = Math.round((img.naturalHeight || MAX) * scale);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, W, H);
+  const id = ctx.getImageData(0, 0, W, H);
+  for (let i = 0; i < id.data.length; i += 4) {
+    const gray = 0.299 * id.data[i] + 0.587 * id.data[i + 1] + 0.114 * id.data[i + 2];
+    const [r, g, b] = thermalColor(gray);
+    id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
+  }
+  ctx.putImageData(id, 0, 0);
+  const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.7);
+  grad.addColorStop(0, "rgba(0,0,20,0)");
+  grad.addColorStop(0.6, "rgba(0,0,50,0.15)");
+  grad.addColorStop(1, "rgba(0,0,110,0.8)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  return c.toDataURL("image/jpeg", 0.88);
+}
+
+function generateSegmentUrl(img: HTMLImageElement): string {
+  const MAX = 400;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.round((img.naturalWidth || MAX) * scale);
+  const H = Math.round((img.naturalHeight || MAX) * scale);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#000a18";
+  ctx.fillRect(0, 0, W, H);
+  const rx = W * 0.43, ry = H * 0.42, cx = W / 2, cy = H / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(img, 0, 0, W, H);
+  ctx.restore();
+  const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.45, cx, cy, Math.max(rx, ry) * 1.05);
+  grad.addColorStop(0, "rgba(0,10,24,0)");
+  grad.addColorStop(0.7, "rgba(0,10,24,0.15)");
+  grad.addColorStop(0.9, "rgba(0,10,24,0.85)");
+  grad.addColorStop(1, "rgba(0,10,24,1)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx * 0.87, ry * 0.87, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(100,210,255,0.65)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.restore();
+  return c.toDataURL("image/jpeg", 0.88);
+}
+
 type Props = {
   scan: Scan;
   sameArea: Scan[];
@@ -24,54 +95,170 @@ type Props = {
   baselineUrl: string | null;
 };
 
-// ── Health Score Speedometer ───────────────────────────────────────────────
-function ScoreGauge({ score, level }: { score: number; level: "low" | "medium" | "high" }) {
-  const [displayed, setDisplayed] = useState(0);
-  const [animated, setAnimated] = useState(false);
+// ── Semicircle speedometer gauge (Skinive-style) ────────────────────────────
+function SemicircleGauge({ score, level }: { score: number; level: "low" | "medium" | "high" }) {
+  const [displayScore, setDisplayScore] = useState(0);
   const healthScore = 100 - score;
   const color = level === "high" ? "#ef4444" : level === "medium" ? "#f59e0b" : "#10b981";
 
   useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 60);
-    let frame: number;
+    let raf: number;
     const start = performance.now();
-    const duration = 900;
-    function tick(now: number) {
-      const p = Math.min(1, (now - start) / duration);
+    const DURATION = 1000;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / DURATION);
       const eased = 1 - Math.pow(1 - p, 3);
-      setDisplayed(Math.round(eased * healthScore));
-      if (p < 1) frame = requestAnimationFrame(tick);
-    }
-    frame = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+      setDisplayScore(Math.round(eased * healthScore));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [healthScore]);
 
+  // Needle: center (100,100), length 74px
+  // displayScore 0 → points left (-180°), 100 → points right (0°)
+  const angleDeg = (displayScore / 100) * 180 - 180;
+  const angleRad = (angleDeg * Math.PI) / 180;
+  const nx = (100 + 74 * Math.cos(angleRad)).toFixed(1);
+  const ny = (100 + 74 * Math.sin(angleRad)).toFixed(1);
+
   return (
-    <div className="w-full flex flex-col gap-3 py-1">
-      <div className="flex items-baseline justify-center gap-1.5">
-        <span className="text-5xl font-black tabular-nums" style={{ color }}>{displayed}</span>
-        <span className="text-2xl font-bold text-on-surface-variant">/100</span>
+    <div className="flex flex-col items-center">
+      <svg width="210" height="115" viewBox="0 0 200 110" aria-hidden>
+        <defs>
+          <linearGradient id="sg-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#ef4444" />
+            <stop offset="45%"  stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#10b981" />
+          </linearGradient>
+        </defs>
+        {/* Track */}
+        <path d="M 20 100 A 80 80 0 0 1 180 100"
+          fill="none" stroke="rgba(128,128,128,0.15)" strokeWidth="14" strokeLinecap="round" />
+        {/* Colored arc */}
+        <path d="M 20 100 A 80 80 0 0 1 180 100"
+          fill="none" stroke="url(#sg-grad)" strokeWidth="14" strokeLinecap="round" />
+        {/* Needle */}
+        <line x1="100" y1="100" x2={nx} y2={ny}
+          stroke={color} strokeWidth="3" strokeLinecap="round" />
+        {/* Pivot */}
+        <circle cx="100" cy="100" r="5" fill={color} />
+      </svg>
+
+      <div className="flex items-baseline gap-1 -mt-2">
+        <span className="text-5xl font-black tabular-nums" style={{ color }}>{displayScore}</span>
+        <span className="text-xl font-bold text-on-surface-variant">/100</span>
       </div>
-      <div className="relative h-3 rounded-full"
-           style={{ background: "linear-gradient(to right, #ef4444 0%, #f59e0b 45%, #10b981 100%)" }}>
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-[3px] shadow-lg"
-          style={{
-            left: `calc(${animated ? healthScore : 0}% - 10px)`,
-            borderColor: color,
-            transition: animated ? "left 0.9s cubic-bezier(0.34,1.56,0.64,1)" : "none",
-          }}
-        />
-      </div>
-      <div className="flex justify-between text-[10px] font-semibold text-on-surface-variant px-1">
-        <span>0</span>
-        <span>100</span>
+      <div className="flex justify-between w-48 mt-1">
+        <span className="text-[10px] font-semibold text-on-surface-variant">Риск</span>
+        <span className="text-[10px] font-semibold text-on-surface-variant">Норма</span>
       </div>
     </div>
   );
 }
 
-// ── ABCDE Bar with color ───────────────────────────────────────────────────
+// ── Hero Carousel: Original → Heatmap → Segmentation ────────────────────────
+function HeroCarousel({
+  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date,
+}: {
+  imageUrl: string | null;
+  riskBadge: string;
+  riskLevelLabel: string;
+  zoneLabel: string;
+  date: string;
+}) {
+  const { t } = useI18n();
+  const [slide, setSlide] = useState(0);
+  const [heatUrl, setHeatUrl] = useState<string | null>(null);
+  const [segUrl,  setSegUrl]  = useState<string | null>(null);
+  const startX = useRef(0);
+
+  useEffect(() => {
+    if (!imageUrl) return;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setHeatUrl(generateHeatmapUrl(img));
+      setSegUrl(generateSegmentUrl(img));
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  const slides = [
+    { url: imageUrl, badge: "ORIGINAL" },
+    { url: heatUrl,  badge: "THERMAL"  },
+    { url: segUrl,   badge: "SEGMENT"  },
+  ];
+
+  const current = slides[slide];
+
+  return (
+    <section
+      className="relative overflow-hidden"
+      onTouchStart={e => { startX.current = e.touches[0].clientX; }}
+      onTouchEnd={e => {
+        const dx = e.changedTouches[0].clientX - startX.current;
+        if (dx < -50 && slide < 2) setSlide(s => s + 1);
+        if (dx >  50 && slide > 0) setSlide(s => s - 1);
+      }}
+    >
+      {current.url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={slide}
+          src={current.url}
+          alt="scan"
+          className="w-full h-72 object-cover"
+          style={{ animation: "fadeIn 0.5s ease" }}
+        />
+      ) : (
+        <div className="w-full h-72 bg-[#000a18] flex items-center justify-center">
+          {imageUrl
+            ? <span className="w-7 h-7 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            : <Icon name="image" className="text-6xl text-outline-variant" />}
+        </div>
+      )}
+
+      {/* Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
+
+      {/* Slide type badge */}
+      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full z-10">
+        <span className="text-white text-[10px] font-bold uppercase tracking-wider">{current.badge}</span>
+      </div>
+
+      {/* Risk badge */}
+      <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm z-10 ${riskBadge}`}>
+        {riskLevelLabel}
+      </div>
+
+      {/* Title overlay */}
+      <div className="absolute left-0 p-5 z-10" style={{ bottom: "40px" }}>
+        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-widest mb-0.5">
+          {t.moles.spotTracker}
+        </p>
+        <h1 className="text-white text-2xl font-extrabold tracking-tight leading-tight">{zoneLabel}</h1>
+        <p className="text-white/60 text-xs mt-1">{date}</p>
+      </div>
+
+      {/* Slide indicator dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setSlide(i)}
+            className={`h-2 rounded-full transition-all duration-200 ${
+              i === slide ? "bg-white w-5" : "bg-white/40 w-2"
+            }`}
+            aria-label={`Slide ${i + 1}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── ABCDE Bar with color ───────────────────────────────────────────
 function AbcdeBar({ label, desc, value }: { label: string; desc: string; value: number }) {
   const color =
     value >= 60 ? "bg-red-500"
@@ -168,43 +355,23 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
       <div className="no-print"><AppHeader back="/dashboard" /></div>
       <main className="pb-8 max-w-2xl mx-auto space-y-4">
 
-        {/* ── Hero photo with risk badge + title overlay ── */}
-        <section className="relative overflow-hidden">
-          {latestUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={latestUrl} alt="scan" className="w-full h-64 object-cover" />
-          ) : (
-            <div className="w-full h-64 bg-surface-container-low flex items-center justify-center">
-              <Icon name="image" className="text-6xl text-outline-variant" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-
-          {/* Risk badge */}
-          <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm ${riskBadge}`}>
-            {t.riskLevels[scan.risk_level]}
-          </div>
-
-          {/* Title */}
-          <div className="absolute bottom-0 left-0 p-5">
-            <p className="text-white/60 text-[11px] font-semibold uppercase tracking-widest mb-0.5">
-              {t.moles.spotTracker}
-            </p>
-            <h1 className="text-white text-2xl font-extrabold tracking-tight leading-tight">
-              {getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}
-            </h1>
-            <p className="text-white/60 text-xs mt-1">{formatDate(scan.created_at)}</p>
-          </div>
-        </section>
+        {/* ── Hero carousel: Original / Thermal / Segment ── */}
+        <HeroCarousel
+          imageUrl={latestUrl}
+          riskBadge={riskBadge}
+          riskLevelLabel={t.riskLevels[scan.risk_level]}
+          zoneLabel={getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}
+          date={formatDate(scan.created_at)}
+        />
 
         <div className="px-4 space-y-4">
 
-          {/* ── Health score gauge ── */}
+          {/* ── Health score gauge (semicircle speedometer) ── */}
           <section className="bg-surface-container-lowest rounded-2xl px-5 pt-4 pb-5 shadow-ambient">
             <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-3">
               {t.moles.skinHealthScore}
             </p>
-            <ScoreGauge score={scan.risk_score} level={scan.risk_level} />
+            <SemicircleGauge score={scan.risk_score} level={scan.risk_level} />
           </section>
 
           {/* ── What This Means (AI Summary) ── */}
@@ -251,6 +418,61 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
               <AbcdeBar label="E" desc={t.moles.abcde.evolution} value={scan.abcde.evolution} />
             </div>
           </section>
+
+          {/* ── Differential Diagnosis ── */}
+          {scan.differential_diagnosis && scan.differential_diagnosis.length > 0 && (
+            <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-ambient">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Icon name="biotech" filled className="text-primary text-base" />
+                </div>
+                <h2 className="text-base font-bold">Дифф. диагностика</h2>
+              </div>
+              <div className="space-y-3">
+                {scan.differential_diagnosis.map((item, i) => (
+                  <div
+                    key={item.name}
+                    className={`rounded-xl p-3 ${
+                      i === 0
+                        ? "bg-primary/10 border border-primary/20"
+                        : "bg-surface-container"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1.5">
+                      <div className="flex flex-col">
+                        {i === 0 && (
+                          <span className="text-primary text-[9px] font-bold uppercase tracking-wide mb-0.5">
+                            ★ Основной диагноз
+                          </span>
+                        )}
+                        <span className={`text-sm font-semibold ${
+                          i === 0 ? "text-primary" : "text-on-surface"
+                        }`}>
+                          {item.name}
+                        </span>
+                      </div>
+                      <span className={`text-base font-black tabular-nums ml-3 ${
+                        i === 0 ? "text-primary" : "text-on-surface-variant"
+                      }`}>
+                        {item.probability}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          i === 0 ? "bg-primary" : "bg-surface-variant"
+                        }`}
+                        style={{ width: `${item.probability}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-on-surface-variant mt-3 italic leading-relaxed">
+                Дифференциальный диагноз предоставлен только для информации. Необходима консультация дерматолога.
+              </p>
+            </section>
+          )}
 
           {/* ── Photo comparison (only when >1 scan) ── */}
           {sameArea.length > 1 && (

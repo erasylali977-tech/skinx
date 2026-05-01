@@ -15,6 +15,7 @@ export type Scan = {
     diameter: number;
     evolution: number;
   };
+  differential_diagnosis?: Array<{ name: string; probability: number }>;
   created_at: string;
 };
 

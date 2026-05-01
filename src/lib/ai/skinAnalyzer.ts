@@ -3,6 +3,11 @@
 
 export type RiskLevel = "low" | "medium" | "high";
 
+export interface DifferentialItem {
+  name: string;
+  probability: number; // 0–100
+}
+
 export interface AbcdeScores {
   asymmetry: number; // 0-100
   border: number;
@@ -18,6 +23,7 @@ export interface AnalysisResult {
   abcde: AbcdeScores;
   notes: string;       // short clinical note
   summary: string;     // plain-language explanation for the patient
+  differentialDiagnosis: DifferentialItem[]; // top 3 diagnoses with probabilities
 }
 
 export interface SkinAnalyzer {
@@ -47,6 +53,24 @@ function seeded(seed: number) {
     return s / 0xffffffff;
   };
 }
+
+const MOCK_DX: Record<RiskLevel, string[][]> = {
+  low: [
+    ["Common Mole", "Seborrheic Keratosis", "Solar Lentigo"],
+    ["Freckle", "Dermatofibroma", "Common Mole"],
+    ["Skin Tag", "Freckle", "Dermatofibroma"],
+  ],
+  medium: [
+    ["Dysplastic Nevus", "Solar Lentigo", "Common Mole"],
+    ["Actinic Keratosis", "Dysplastic Nevus", "Seborrheic Keratosis"],
+    ["Atypical Mole", "Actinic Keratosis", "Solar Lentigo"],
+  ],
+  high: [
+    ["Basal Cell Carcinoma", "Squamous Cell Carcinoma", "Dysplastic Nevus"],
+    ["Malignant Melanoma", "Basal Cell Carcinoma", "Dysplastic Nevus"],
+    ["Squamous Cell Carcinoma", "Actinic Keratosis", "Malignant Melanoma"],
+  ],
+};
 
 export class MockSkinAnalyzer implements SkinAnalyzer {
   async analyze({ bytes }: { bytes: Uint8Array; bodyArea?: string | null; mimeType?: string; locale?: string }): Promise<AnalysisResult> {
@@ -83,7 +107,18 @@ export class MockSkinAnalyzer implements SkinAnalyzer {
           ? "There are minor variations in this area worth keeping an eye on. Re-scan in 4–6 weeks to track any changes over time."
           : "This area looks stable with no significant changes detected. Continue your regular monthly self-checks.";
 
-    return { riskScore, riskLevel, status, abcde, notes, summary };
+    const setIdx = Math.floor(rnd() * 3);
+    const [c1, c2, c3] = MOCK_DX[riskLevel][setIdx];
+    const p1 = Math.round(rnd() * 30 + 65);
+    const p2 = Math.round((100 - p1) * (0.5 + rnd() * 0.35));
+    const p3 = Math.max(1, 100 - p1 - p2);
+    const differentialDiagnosis: DifferentialItem[] = [
+      { name: c1, probability: p1 },
+      { name: c2, probability: Math.max(1, p2) },
+      { name: c3, probability: Math.max(1, p3) },
+    ];
+
+    return { riskScore, riskLevel, status, abcde, notes, summary, differentialDiagnosis };
   }
 }
 
@@ -99,7 +134,7 @@ const LANG_MAP: Record<string, string> = {
 function buildPrompt(locale?: string, bodyArea?: string | null): string {
   const lang = LANG_MAP[locale ?? "en"] ?? "English";
   const areaHint = bodyArea ? `\nBody area being examined: ${bodyArea}` : "";
-  return `⚠️ LANGUAGE REQUIREMENT: You MUST write the "notes" and "summary" JSON fields in ${lang} ONLY. No other language is acceptable.
+  return `⚠️ LANGUAGE REQUIREMENT: You MUST write "notes", "summary", and differential diagnosis "name" fields in ${lang} ONLY. No other language is acceptable.
 
 You are a dermatology AI assistant helping patients monitor their skin health.
 Analyze the skin lesion or area visible in the image. It may be a mole, wart (verruca), age spot, skin tag, birthmark, rash, freckle, or any other skin formation.
@@ -119,16 +154,23 @@ JSON structure (all numbers are integers 0-100):
     "evolution": <0=stable/no visible changes, 100=significant changes observed>
   },
   "notes": "<One concise clinical observation sentence in ${lang}>",
-  "summary": "<2-3 plain language sentences in ${lang}: what was found, what it likely is, and the recommended next step>"
+  "summary": "<2-3 plain language sentences in ${lang}: what was found, what it likely is, and the recommended next step>",
+  "differentialDiagnosis": [
+    {"name": "<most likely diagnosis in ${lang}>", "probability": <integer 1-100>},
+    {"name": "<second diagnosis in ${lang}>", "probability": <integer 1-100>},
+    {"name": "<third diagnosis in ${lang}>", "probability": <integer 1-100>}
+  ]
 }
 
 Rules:
 - riskLevel: low if riskScore<35, medium if 35-59, high if >=60
 - status: "review" when high risk, otherwise "stable"
+- differentialDiagnosis: top 3 most likely skin conditions ordered by probability descending; probabilities must sum to 100
+- Names in differentialDiagnosis MUST be in ${lang}
 - Warts/verrucas are typically low risk — score accordingly
 - If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis
-- ⚠️ MANDATORY: "notes" and "summary" MUST be written in ${lang}. This is a strict requirement.
+- ⚠️ MANDATORY: "notes", "summary", and differential diagnosis names MUST be in ${lang}. This is a strict requirement.
 - Return ONLY the JSON object, no markdown, no explanation`;
 }
 
@@ -207,6 +249,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       status?: unknown;
       notes?: unknown;
       summary?: unknown;
+      differentialDiagnosis?: unknown[];
     };
 
     const abcde: AbcdeScores = {
@@ -227,6 +270,13 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
         ? (raw.status as "stable" | "review" | "new")
         : riskLevel === "high" ? "review" : "stable";
 
+    const differentialDiagnosis: DifferentialItem[] = Array.isArray(raw.differentialDiagnosis)
+      ? (raw.differentialDiagnosis as Record<string, unknown>[]).slice(0, 3).map(it => ({
+          name: typeof it.name === "string" ? it.name : "Unknown",
+          probability: clamp(typeof it.probability === "number" ? it.probability : 0),
+        })).filter(it => it.name !== "Unknown")
+      : [];
+
     return {
       riskScore,
       riskLevel,
@@ -234,6 +284,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
       abcde,
       notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
       summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
+      differentialDiagnosis,
     };
   }
 }
@@ -304,6 +355,7 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
       abcde?: Record<string, unknown>;
       riskScore?: unknown; riskLevel?: unknown;
       status?: unknown; notes?: unknown; summary?: unknown;
+      differentialDiagnosis?: unknown[];
     };
 
     const abcde: AbcdeScores = {
@@ -323,10 +375,18 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
         ? (raw.status as "stable" | "review" | "new")
         : riskLevel === "high" ? "review" : "stable";
 
+    const differentialDiagnosis: DifferentialItem[] = Array.isArray(raw.differentialDiagnosis)
+      ? (raw.differentialDiagnosis as Record<string, unknown>[]).slice(0, 3).map(it => ({
+          name: typeof it.name === "string" ? it.name : "Unknown",
+          probability: clamp(typeof it.probability === "number" ? it.probability : 0),
+        })).filter(it => it.name !== "Unknown")
+      : [];
+
     return {
       riskScore, riskLevel, status, abcde,
       notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
       summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
+      differentialDiagnosis,
     };
   }
 }

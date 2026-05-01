@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
       risk_level: analysis.riskLevel,
       status: analysis.status,
       abcde: analysis.abcde,
+      differential_diagnosis: analysis.differentialDiagnosis,
       created_at: new Date().toISOString(),
     };
     mockInsertScan(scan, {
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
       status: analysis.status,
       abcde: analysis.abcde,
       summary: analysis.summary,
+      differential_diagnosis: analysis.differentialDiagnosis,
     };
 
     let inserted: { id: string } | null = null;
@@ -144,6 +146,14 @@ export async function POST(request: NextRequest) {
 
     if (error?.message?.includes("summary")) {
       delete insertPayload.summary;
+      ({ data: inserted, error } = await supabase
+        .from("scans")
+        .insert(insertPayload)
+        .select("id")
+        .single());
+    }
+    if (error?.message?.includes("differential_diagnosis")) {
+      delete insertPayload.differential_diagnosis;
       ({ data: inserted, error } = await supabase
         .from("scans")
         .insert(insertPayload)

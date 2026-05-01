@@ -9,82 +9,181 @@ import { type BodyGender } from "@/lib/bodyZones";
 import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { ZoneGrid } from "@/components/ZoneGrid";
 
-// ── Analyzing overlay shown while AI processes the image ───────────────────
+// ── Canvas effect helpers ───────────────────────────────────────────────────
+function thermalColor(gray: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, gray / 255));
+  let r = 0, g = 0, b = 0;
+  if (t < 0.25)      { b = 1; g = t * 4; }
+  else if (t < 0.5)  { g = 1; b = 1 - (t - 0.25) * 4; }
+  else if (t < 0.75) { r = (t - 0.5) * 4; g = 1; }
+  else               { r = 1; g = 1 - (t - 0.75) * 4; }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function generateHeatmapUrl(img: HTMLImageElement): string {
+  const MAX = 400;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.round((img.naturalWidth || MAX) * scale);
+  const H = Math.round((img.naturalHeight || MAX) * scale);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, W, H);
+  const id = ctx.getImageData(0, 0, W, H);
+  for (let i = 0; i < id.data.length; i += 4) {
+    const gray = 0.299 * id.data[i] + 0.587 * id.data[i + 1] + 0.114 * id.data[i + 2];
+    const [r, g, b] = thermalColor(gray);
+    id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
+  }
+  ctx.putImageData(id, 0, 0);
+  const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.7);
+  grad.addColorStop(0, "rgba(0,0,20,0)");
+  grad.addColorStop(0.6, "rgba(0,0,50,0.15)");
+  grad.addColorStop(1, "rgba(0,0,110,0.8)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  return c.toDataURL("image/jpeg", 0.88);
+}
+
+function generateSegmentUrl(img: HTMLImageElement): string {
+  const MAX = 400;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.round((img.naturalWidth || MAX) * scale);
+  const H = Math.round((img.naturalHeight || MAX) * scale);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#000a18";
+  ctx.fillRect(0, 0, W, H);
+  const rx = W * 0.43, ry = H * 0.42, cx = W / 2, cy = H / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(img, 0, 0, W, H);
+  ctx.restore();
+  const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.45, cx, cy, Math.max(rx, ry) * 1.05);
+  grad.addColorStop(0, "rgba(0,10,24,0)");
+  grad.addColorStop(0.7, "rgba(0,10,24,0.15)");
+  grad.addColorStop(0.9, "rgba(0,10,24,0.85)");
+  grad.addColorStop(1, "rgba(0,10,24,1)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx * 0.87, ry * 0.87, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(100,210,255,0.65)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.restore();
+  return c.toDataURL("image/jpeg", 0.88);
+}
+
+// ── Analyzing overlay: 3-phase heatmap animation ───────────────────────────
 function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
   const { t } = useI18n();
-  const AI_STEPS = [t.scan.stepTexture, t.scan.stepColor, t.scan.stepShape, t.scan.stepRisk];
-  const [step, setStep] = useState(0);
+  const [pct, setPct] = useState(0);
+  const [phase, setPhase] = useState(0); // 0=original 1=heatmap 2=segmentation
+  const [heatUrl, setHeatUrl] = useState<string | null>(null);
+  const [segUrl,  setSegUrl]  = useState<string | null>(null);
 
+  const STEP_LABELS = [
+    t.scan.stepTexture,
+    t.scan.stepColor,
+    t.scan.stepShape,
+    t.scan.stepRisk,
+  ];
+  const currentStep = pct < 30 ? 0 : pct < 57 ? 1 : pct < 85 ? 2 : 3;
+
+  // Generate heatmap + segmentation from photo
   useEffect(() => {
-    const id = setInterval(
-      () => setStep(prev => (prev < AI_STEPS.length - 1 ? prev + 1 : prev)),
-      1400,
-    );
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!photoUrl) return;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setHeatUrl(generateHeatmapUrl(img));
+      setSegUrl(generateSegmentUrl(img));
+    };
+    img.src = photoUrl;
+  }, [photoUrl]);
+
+  // Animate 0 → 95 % over ~9 s
+  useEffect(() => {
+    const DURATION = 9000;
+    const start = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const p = Math.min(95, Math.round(((now - start) / DURATION) * 100));
+      setPct(p);
+      setPhase(p < 30 ? 0 : p < 75 ? 1 : 2);
+      if (p < 95) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
+  const displayUrl =
+    phase === 2 && segUrl  ? segUrl  :
+    phase === 1 && heatUrl ? heatUrl :
+    photoUrl;
+
+  const phaseLabel =
+    phase === 2 ? "Сегментация новообразования" :
+    phase === 1 ? "Тепловая карта анализа" :
+    STEP_LABELS[currentStep];
+
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden">
-      {/* Blurred photo background */}
-      {photoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-110" />
-      )}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-3xl" />
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background overflow-hidden">
 
-      <div className="relative z-10 flex flex-col items-center gap-8 px-8 w-full max-w-xs text-white">
-        {/* Pulsing rings + icon */}
-        <div className="relative flex items-center justify-center w-32 h-32">
-          <div
-            className="absolute w-32 h-32 rounded-full border-2 border-primary/40 animate-ping"
-            style={{ animationDuration: "2s" }}
+      {/* Title */}
+      <p className="text-on-surface-variant text-sm font-semibold mb-5 tracking-wide">
+        SkinX AI обрабатывает...
+      </p>
+
+      {/* Photo card — switches between original / heatmap / segmentation */}
+      <div className="w-[280px] h-[280px] rounded-2xl overflow-hidden bg-[#000a18] shadow-ambient-xl relative">
+        {displayUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={phase}
+            src={displayUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ animation: "fadeIn 0.6s ease" }}
           />
-          <div
-            className="absolute w-24 h-24 rounded-full border-2 border-primary/60 animate-ping"
-            style={{ animationDuration: "2s", animationDelay: "0.6s" }}
-          />
-          <div className="w-20 h-20 rounded-full bg-primary shadow-primary-glow flex items-center justify-center">
-            <Icon name="psychology" filled className="text-white text-4xl" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
-        </div>
+        )}
 
-        <div className="text-center">
-          <h2 className="text-xl font-bold tracking-tight">{t.scan.analyzing}</h2>
-          <p className="text-white/50 text-sm mt-1">{t.scan.analyzingHint}</p>
+        {/* Phase badge overlay */}
+        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full">
+          <span className="text-white text-[10px] font-bold uppercase tracking-wider">
+            {phase === 2 ? "SEGMENT" : phase === 1 ? "THERMAL" : "ORIGINAL"}
+          </span>
         </div>
+      </div>
 
-        {/* Step progress */}
-        <div className="w-full space-y-3">
-          {AI_STEPS.map((label, i) => {
-            const done   = i < step;
-            const active = i === step;
-            return (
-              <div key={label} className="flex items-center gap-3">
-                <div
-                  className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-500 ${
-                    done   ? "bg-emerald-500"
-                    : active ? "bg-primary ring-4 ring-primary/25"
-                    : "bg-white/10"
-                  }`}
-                >
-                  {done && <Icon name="check" className="text-white text-[10px]" />}
-                </div>
-                <div className="flex-1">
-                  <p className={`text-xs font-semibold transition-colors ${done || active ? "text-white" : "text-white/30"}`}>
-                    {label}
-                  </p>
-                  {active && (
-                    <div className="mt-1 h-[2px] bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full animate-fill-bar" />
-                    </div>
-                  )}
-                </div>
-                {done && <Icon name="check_circle" filled className="text-emerald-400 text-sm flex-shrink-0" />}
-              </div>
-            );
-          })}
-        </div>
+      {/* Percentage */}
+      <div className="mt-7 flex items-baseline gap-1">
+        <span className="text-5xl font-black tabular-nums text-primary">{pct}</span>
+        <span className="text-2xl font-bold text-primary/70">%</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-[280px] mt-3 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Step label */}
+      <div className="mt-4 flex items-center gap-2">
+        <span className="w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin flex-shrink-0" />
+        <p className="text-on-surface-variant text-xs font-medium">{phaseLabel}</p>
       </div>
     </div>
   );
