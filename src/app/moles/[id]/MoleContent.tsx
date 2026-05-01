@@ -109,99 +109,50 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
   }[scan.risk_level];
 
   async function sharePdfReport() {
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const zone = getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck;
-    const healthScore = 100 - scan.risk_score;
-    const rc = scan.risk_level === "high" ? [239, 68, 68] : scan.risk_level === "medium" ? [245, 158, 11] : [16, 185, 129];
-
-    // Header
-    doc.setFillColor(61, 122, 237);
-    doc.rect(0, 0, 210, 30, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(22);
-    doc.text("SkinX", 15, 16);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text("Skin Health Report", 15, 24);
-    doc.text(formatDate(scan.created_at), 195, 24, { align: "right" });
-
-    // Zone title
-    doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-    doc.text(zone, 15, 46);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(formatDate(scan.created_at), 15, 54);
-
-    // Score box
-    doc.setFillColor(rc[0], rc[1], rc[2]);
-    doc.roundedRect(15, 60, 85, 28, 4, 4, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(26);
-    doc.text(`${healthScore}/100`, 57, 78, { align: "center" });
-    doc.setFontSize(7);
-    doc.text(t.moles.skinHealthScore.toUpperCase(), 57, 84, { align: "center" });
-
-    // Risk badge
-    doc.setFillColor(245, 245, 250);
-    doc.roundedRect(110, 60, 85, 28, 4, 4, "F");
-    doc.setTextColor(rc[0], rc[1], rc[2]);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text(t.riskLevels[scan.risk_level], 152, 72, { align: "center" });
-    doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-    doc.text(`${t.moles.score}: ${scan.risk_score}/100`, 152, 80, { align: "center" });
-
-    // Summary
-    let y = 102;
-    doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(t.moles.whatThisMeans, 15, y); y += 7;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
-    const summaryLines = doc.splitTextToSize(scan.summary ?? scan.notes ?? "", 180);
-    doc.text(summaryLines, 15, y);
-    y += summaryLines.length * 5.5 + 10;
-
-    // ABCDE
-    doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(t.moles.abcdeMetrics, 15, y); y += 8;
-    const rows = [
-      { l: "A", d: t.moles.abcde.asymmetry, v: scan.abcde.asymmetry },
-      { l: "B", d: t.moles.abcde.border,    v: scan.abcde.border },
-      { l: "C", d: t.moles.abcde.color,     v: scan.abcde.color },
-      { l: "D", d: t.moles.abcde.diameter,  v: scan.abcde.diameter },
-      { l: "E", d: t.moles.abcde.evolution, v: scan.abcde.evolution },
-    ];
-    for (const row of rows) {
-      const br = row.v >= 60 ? [239, 68, 68] : row.v >= 35 ? [245, 158, 11] : [16, 185, 129];
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(80, 80, 80);
-      doc.text(row.l, 15, y);
-      doc.setFont("helvetica", "normal"); doc.setTextColor(50, 50, 50);
-      doc.text(row.d, 25, y);
-      doc.setFont("helvetica", "bold"); doc.setTextColor(20, 20, 20);
-      doc.text(String(row.v), 195, y, { align: "right" });
-      doc.setFillColor(220, 220, 225); doc.roundedRect(25, y + 2, 150, 2.5, 1, 1, "F");
-      doc.setFillColor(br[0], br[1], br[2]); doc.roundedRect(25, y + 2, 150 * row.v / 100, 2.5, 1, 1, "F");
-      y += 11;
+    const el = document.getElementById("skinx-pdf-preview");
+    if (!el) return;
+    el.style.display = "block";
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      if (imgH <= pageH) {
+        doc.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, imgW, imgH);
+      } else {
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        const slicePx = Math.floor((pageH * canvas.width) / imgW);
+        let pos = 0;
+        while (pos < canvas.height) {
+          const h = Math.min(slicePx, canvas.height - pos);
+          sliceCanvas.height = h;
+          sliceCanvas.getContext("2d")!.drawImage(canvas, 0, pos, canvas.width, h, 0, 0, canvas.width, h);
+          if (pos > 0) doc.addPage();
+          doc.addImage(sliceCanvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, imgW, (h * imgW) / canvas.width);
+          pos += h;
+        }
+      }
+      const blob = doc.output("blob");
+      const zone = getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck;
+      const fileName = `skinx-${zone.toLowerCase().replace(/\s+/g, "-")}-${scan.id.slice(0, 6)}.pdf`;
+      const file = new File([blob], fileName, { type: "application/pdf" });
+      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "SkinX Report" }); return; } catch { /* fall through */ }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      el.style.display = "none";
     }
-
-    // Footer
-    doc.setFillColor(240, 242, 250); doc.rect(0, 268, 210, 29, "F");
-    doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(130, 130, 130);
-    doc.text(doc.splitTextToSize(t.moles.monitoringDisclaimer, 175), 15, 276);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
-    doc.text("skinx.fit", 195, 290, { align: "right" });
-
-    const blob = doc.output("blob");
-    const fileName = `skinx-${scan.id.slice(0, 8)}.pdf`;
-    const file = new File([blob], fileName, { type: "application/pdf" });
-    if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "SkinX Report" }); return; } catch { /* fall through */ }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = fileName; a.click();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -403,6 +354,76 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
         </div>
       </main>
       <div className="no-print"><BottomNav /></div>
+
+      {/* ── Hidden PDF preview (captured by html2canvas) ── */}
+      <div
+        id="skinx-pdf-preview"
+        style={{ display: "none", position: "fixed", top: 0, left: 0, width: "794px", backgroundColor: "#fff", fontFamily: "Arial, sans-serif", color: "#1a1a1a", zIndex: -1 }}
+      >
+        {/* Header */}
+        <div style={{ background: "#3d7aed", padding: "24px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: "#fff", fontSize: "28px", fontWeight: 900 }}>SkinX</div>
+            <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px", marginTop: "2px" }}>Skin Health Report</div>
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>{formatDate(scan.created_at)}</div>
+        </div>
+
+        <div style={{ padding: "28px 32px" }}>
+          {/* Zone + Score */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+            <div>
+              <div style={{ fontSize: "22px", fontWeight: 800 }}>{getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}</div>
+              <div style={{ color: "#888", fontSize: "12px", marginTop: "4px" }}>{formatDate(scan.created_at)}</div>
+            </div>
+            <div style={{ background: scan.risk_level === "high" ? "#ef4444" : scan.risk_level === "medium" ? "#f59e0b" : "#10b981", color: "#fff", borderRadius: "12px", padding: "10px 20px", textAlign: "center" }}>
+              <div style={{ fontSize: "28px", fontWeight: 900 }}>{100 - scan.risk_score}<span style={{ fontSize: "14px", fontWeight: 600 }}>/100</span></div>
+              <div style={{ fontSize: "10px", opacity: 0.85, marginTop: "2px" }}>{t.moles.skinHealthScore.toUpperCase()}</div>
+            </div>
+          </div>
+
+          {/* Risk label */}
+          <div style={{ background: "#f0f2fa", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontWeight: 700, fontSize: "14px" }}>{t.riskLevels[scan.risk_level]}</span>
+            <span style={{ color: "#888", fontSize: "13px" }}>{t.moles.score}: {scan.risk_score}/100</span>
+          </div>
+
+          {/* AI Summary */}
+          <div style={{ marginBottom: "24px" }}>
+            <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "8px" }}>{t.moles.whatThisMeans}</div>
+            <div style={{ fontSize: "13px", color: "#444", lineHeight: 1.65 }}>{scan.summary ?? scan.notes ?? ""}</div>
+          </div>
+
+          {/* ABCDE */}
+          <div>
+            <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "12px" }}>{t.moles.abcdeMetrics}</div>
+            {([
+              { l: "A", d: t.moles.abcde.asymmetry, v: scan.abcde.asymmetry },
+              { l: "B", d: t.moles.abcde.border,    v: scan.abcde.border },
+              { l: "C", d: t.moles.abcde.color,     v: scan.abcde.color },
+              { l: "D", d: t.moles.abcde.diameter,  v: scan.abcde.diameter },
+              { l: "E", d: t.moles.abcde.evolution, v: scan.abcde.evolution },
+            ] as const).map(({ l, d, v }) => (
+              <div key={l} style={{ marginBottom: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span style={{ fontWeight: 700, color: "#666", minWidth: "16px" }}>{l}</span>
+                  <span style={{ flex: 1, paddingLeft: "8px", fontSize: "12px", color: "#444" }}>{d}</span>
+                  <span style={{ fontWeight: 700, fontSize: "12px" }}>{v}</span>
+                </div>
+                <div style={{ height: "6px", background: "#e5e5ea", borderRadius: "3px" }}>
+                  <div style={{ height: "6px", background: v >= 60 ? "#ef4444" : v >= 35 ? "#f59e0b" : "#10b981", borderRadius: "3px", width: `${v}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ background: "#f0f2fa", padding: "14px 32px", display: "flex", justifyContent: "space-between" }}>
+          <span style={{ color: "#999", fontSize: "11px", fontStyle: "italic" }}>{t.moles.monitoringDisclaimer}</span>
+          <span style={{ color: "#888", fontWeight: 700, fontSize: "12px" }}>skinx.fit</span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -37,6 +37,7 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
   const [age, setAge] = useState<string>(initial?.age_range ?? "");
   const [sex, setSex] = useState<string>(initial?.sex ?? "");
   const [skinType, setSkinType] = useState<string>(initial?.skin_type ?? "II");
+  const [skinTexture, setSkinTexture] = useState<string>(initial?.skin_texture ?? "");
   const [risks, setRisks] = useState<string[]>(initial?.risk_factors ?? []);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +95,7 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
           age_range: age || null,
           sex: sex || null,
           skin_type: skinType || null,
+          skin_texture: skinTexture || null,
           risk_factors: risks,
         };
         if (MOCK) {
@@ -265,6 +267,31 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      {/* Skin Texture */}
+      <section className="bg-surface-container-lowest rounded-xl p-6 space-y-4 shadow-ambient">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">{t.profile.skinTexture}</h2>
+          <p className="text-sm text-on-surface-variant mt-1">{t.profile.skinTextureHint}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {(["oily", "dry", "combination", "sensitive"] as const).map((key) => (
+            <button
+              type="button"
+              key={key}
+              onClick={() => setSkinTexture(skinTexture === key ? "" : key)}
+              className={cn(
+                "py-3 px-4 rounded-xl text-sm font-semibold border-2 transition-all",
+                skinTexture === key
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+              )}
+            >
+              {t.profile[key]}
+            </button>
+          ))}
         </div>
       </section>
 

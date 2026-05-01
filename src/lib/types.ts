@@ -26,6 +26,7 @@ export type Profile = {
   age_range: string | null;
   sex: string | null;
   skin_type: string | null;
+  skin_texture: string | null;
   risk_factors: string[] | null;
   onboarded: boolean;
   created_at: string;

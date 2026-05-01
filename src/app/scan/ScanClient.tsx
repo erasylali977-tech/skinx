@@ -90,7 +90,17 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
   );
 }
 
-type ScanStep = "zones" | "scan";
+type ScanStep = "zones" | "condition" | "scan";
+
+const CONDITIONS = [
+  { key: "conditionGeneral", icon: "search" },
+  { key: "conditionMole",    icon: "radio_button_checked" },
+  { key: "conditionRash",    icon: "texture" },
+  { key: "conditionAcne",    icon: "bubble_chart" },
+  { key: "conditionPigment", icon: "palette" },
+  { key: "conditionDryness", icon: "water_drop" },
+  { key: "conditionOther",   icon: "more_horiz" },
+] as const;
 
 export function ScanClient() {
   const router = useRouter();
@@ -110,7 +120,8 @@ export function ScanClient() {
     setGender(g);
     localStorage.setItem("skinx_gender", g);
   }
-  const [selectedZone, setSelectedZone] = useState<ImageZoneId | null>(null);
+  const [selectedZone,    setSelectedZone]    = useState<ImageZoneId | null>(null);
+  const [conditionKey,    setConditionKey]    = useState<string>("conditionGeneral");
   const [preview,      setPreview]      = useState<string | null>(null);
   const [file,         setFile]         = useState<File | null>(null);
   const [uploading,    setUploading]    = useState(false);
@@ -148,10 +159,12 @@ export function ScanClient() {
       const fd = new FormData();
       fd.append("image", file);
       if (selectedZone) fd.append("body_area", selectedZone);
+      fd.append("condition", conditionKey);
       fd.append("locale", locale);
       const res = await fetch("/api/scans", { method: "POST", body: fd });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
+        if (res.status === 429) throw new Error(t.scan.rateLimitError);
         throw new Error(j.error || t.scan.uploadFailed);
       }
       const j = await res.json();
@@ -192,7 +205,7 @@ export function ScanClient() {
                   : "bg-surface-container text-on-surface-variant"
               }`}
             >
-              <span className="text-3xl leading-none">♂</span>
+              <span style={{ lineHeight: 0, fontSize: "28px" }}>♂</span>
             </button>
             <button
               onClick={() => changeGender("female")}
@@ -202,7 +215,7 @@ export function ScanClient() {
                   : "bg-surface-container text-on-surface-variant"
               }`}
             >
-              <span className="text-3xl leading-none">♀</span>
+              <span style={{ lineHeight: 0, fontSize: "28px" }}>♀</span>
             </button>
           </div>
         </header>
@@ -213,8 +226,7 @@ export function ScanClient() {
             gender={gender}
             onSelect={(zone) => {
               setSelectedZone(zone);
-              setStep("scan");
-              setCameraOpen(true);
+              setStep("condition");
             }}
           />
         </div>
@@ -222,10 +234,71 @@ export function ScanClient() {
     );
   }
 
-  // ── Step: scan (camera + upload) ───────────────────────────────────────
+  // ── Step: condition picker ────────────────────────────────────────────────
+  if (step === "condition") {
+    return (
+      <div className="h-screen w-screen flex flex-col bg-background text-on-surface">
+        <header className="flex-shrink-0 flex justify-between items-center px-5 pt-14 pb-3">
+          <button
+            onClick={() => setStep("zones")}
+            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <Icon name="arrow_back" />
+          </button>
+          <div className="text-center">
+            <h1 className="text-sm font-semibold">{t.scan.conditionType}</h1>
+            {selectedZone && (
+              <p className="text-on-surface-variant text-[11px]">{ZONE_DETAIL_MAP[selectedZone].name[locale]}</p>
+            )}
+          </div>
+          <div className="w-10" />
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-8">
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            {CONDITIONS.map(({ key, icon }) => {
+              const label = t.scan[key as keyof typeof t.scan] as string;
+              const active = conditionKey === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setConditionKey(key)}
+                  className={`flex flex-col items-center justify-center gap-2.5 py-5 rounded-2xl border-2 transition-all active:scale-95 ${
+                    active
+                      ? "border-primary bg-primary/10"
+                      : "border-outline-variant/40 bg-surface-container-low"
+                  }`}
+                >
+                  <Icon
+                    name={icon}
+                    filled={active}
+                    className={`text-2xl ${active ? "text-primary" : "text-on-surface-variant"}`}
+                  />
+                  <span className={`text-xs font-semibold text-center px-1 ${active ? "text-primary" : "text-on-surface-variant"}`}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="px-5 pb-10">
+          <button
+            onClick={() => { setStep("scan"); setCameraOpen(true); }}
+            className="w-full py-4 rounded-full bg-primary-gradient text-on-primary font-bold text-base shadow-primary-glow active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <Icon name="add_a_photo" />
+            <span>{t.scan.analyzePhoto}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step: scan (camera + upload) ────────────────────────────────────────
   return (
     <>
-      {uploading && <AnalyzingOverlay photoUrl={preview} />}
       {cameraOpen && (
         <ScanCamera
           onCapture={handleCapture}

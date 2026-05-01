@@ -7,6 +7,10 @@ import type { Scan } from "@/lib/types";
 
 export const runtime = "nodejs";
 
+// ── Daily scan rate limit ─────────────────────────────────────────────────
+const DAILY_LIMIT = 3;
+const scanCounts = new Map<string, { date: string; count: number }>();
+
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -20,6 +24,17 @@ const ALLOWED_MIME: Record<string, string> = {
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const entry = scanCounts.get(user.id);
+  const todayCount = entry?.date === today ? entry.count : 0;
+  if (todayCount >= DAILY_LIMIT) {
+    return NextResponse.json(
+      { error: `Daily scan limit reached (${DAILY_LIMIT}/day). Come back tomorrow!` },
+      { status: 429 },
+    );
+  }
+  scanCounts.set(user.id, { date: today, count: todayCount + 1 });
 
   const form = await request.formData();
   const file = form.get("image");
