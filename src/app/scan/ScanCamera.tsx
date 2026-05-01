@@ -67,84 +67,83 @@ function analyzeFrame(
   };
 }
 
-// ── Lesion detection in sample canvas ────────────────────────────────────
-// Finds pixels significantly darker or chromatically different from average skin.
-// Returns bounding box in sample (200x200) coordinates, or null if not found.
-function detectLesionInSample(
-  canvas: HTMLCanvasElement
-): { x: number; y: number; w: number; h: number } | null {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx || canvas.width < 10) return null;
-  const SW = canvas.width, SH = canvas.height;
-  const { data: d } = ctx.getImageData(0, 0, SW, SH);
-
-  // Average color of the inner 40% region (the lesion candidate zone)
-  const s = Math.floor(SW * 0.3), e = Math.floor(SW * 0.7);
-  let sumR = 0, sumG = 0, sumB = 0, n = 0;
-  for (let row = s; row < e; row += 2) {
-    for (let col = s; col < e; col += 2) {
-      const i = (row * SW + col) * 4;
-      sumR += d[i]; sumG += d[i + 1]; sumB += d[i + 2]; n++;
-    }
-  }
-  if (!n) return null;
-  const avgR = sumR / n, avgG = sumG / n, avgB = sumG / n;
-  const avgLum = (avgR + avgG + avgB) / 3;
-
-  // Detect pixels that are notably darker OR strongly chromatically different
-  const margin = Math.floor(SW * 0.1);
-  let minX = SW, minY = SH, maxX = 0, maxY = 0, cnt = 0;
-  for (let row = margin; row < SH - margin; row++) {
-    for (let col = margin; col < SW - margin; col++) {
-      const i = (row * SW + col) * 4;
-      const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
-      const chroma = (Math.abs(d[i] - avgR) + Math.abs(d[i + 1] - avgG) + Math.abs(d[i + 2] - avgB)) / 3;
-      if (avgLum - lum > 30 || chroma > 45) {
-        if (col < minX) minX = col;
-        if (col > maxX) maxX = col;
-        if (row < minY) minY = row;
-        if (row > maxY) maxY = row;
-        cnt++;
-      }
-    }
-  }
-  if (cnt < 150) return null;
-  const w = maxX - minX, h = maxY - minY;
-  if (w < 15 || h < 15) return null;
-  return { x: minX, y: minY, w, h };
+// ── Roboflow prediction type ───────────────────────────────────────────────
+interface RoboflowPrediction {
+  x: number; y: number;         // center of bounding box
+  width: number; height: number;
+  confidence: number;           // 0–1
+  class: string;
 }
 
-// ── Draw lesion bounding box overlay on a canvas ──────────────────────────
-function drawLesionOverlay(
+const CLASS_LABELS: Record<string, string> = {
+  akiec: "Actinic Keratosis",
+  bcc:   "Basal Cell Carcinoma",
+  bkl:   "Benign Lesion",
+  df:    "Dermatofibroma",
+  mel:   "Melanoma",
+  nv:    "Nevi",
+  vasc:  "Vascular",
+};
+
+// ── Draw Roboflow bounding boxes on the overlay canvas ────────────────────
+function drawPredictions(
   canvas: HTMLCanvasElement,
-  box: { x: number; y: number; w: number; h: number } | null,
+  preds: RoboflowPrediction[],
+  imgW: number,
+  imgH: number,
   t: number
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!box) return;
-  const pulse = 0.65 + 0.35 * Math.abs(Math.sin(t / 600));
-  const { x, y, w, h } = box;
-  // Outer glow
-  ctx.shadowColor = "rgba(255,80,60,0.6)";
-  ctx.shadowBlur = 10;
-  ctx.strokeStyle = `rgba(255,80,60,${(pulse * 0.5).toFixed(2)})`;
-  ctx.lineWidth = 5;
-  ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
-  // Main box
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(255,80,60,${pulse.toFixed(2)})`;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, w, h);
-  // + crosshair
-  const cx = x + w / 2, cy = y + h / 2;
-  ctx.strokeStyle = `rgba(255,255,255,${pulse.toFixed(2)})`;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - 9, cy); ctx.lineTo(cx + 9, cy);
-  ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
-  ctx.stroke();
+  if (!preds.length) return;
+
+  const sx    = canvas.width  / imgW;
+  const sy    = canvas.height / imgH;
+  const pulse = 0.75 + 0.25 * Math.abs(Math.sin(t / 700));
+
+  for (const p of preds) {
+    if (p.confidence < 0.3) continue;
+    const x = (p.x - p.width  / 2) * sx;
+    const y = (p.y - p.height / 2) * sy;
+    const w = p.width  * sx;
+    const h = p.height * sy;
+
+    // Outer glow
+    ctx.shadowColor = "rgba(77,157,255,0.55)";
+    ctx.shadowBlur  = 14;
+    ctx.strokeStyle = `rgba(77,157,255,${(pulse * 0.4).toFixed(2)})`;
+    ctx.lineWidth   = 6;
+    ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+
+    // Main box
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = `rgba(77,157,255,${pulse.toFixed(2)})`;
+    ctx.lineWidth   = 2;
+    ctx.strokeRect(x, y, w, h);
+
+    // Corner ticks
+    const tc = 10;
+    ctx.strokeStyle = "rgba(255,255,255,0.92)";
+    ctx.lineWidth   = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x,          y + tc); ctx.lineTo(x,      y    ); ctx.lineTo(x + tc,     y    );
+    ctx.moveTo(x + w - tc, y    ); ctx.lineTo(x + w,  y    ); ctx.lineTo(x + w,      y + tc);
+    ctx.moveTo(x,      y + h - tc); ctx.lineTo(x,      y + h); ctx.lineTo(x + tc,    y + h );
+    ctx.moveTo(x + w - tc, y + h); ctx.lineTo(x + w,  y + h); ctx.lineTo(x + w, y + h - tc);
+    ctx.stroke();
+
+    // Label pill
+    const label = `${CLASS_LABELS[p.class] ?? p.class}  ${Math.round(p.confidence * 100)}%`;
+    ctx.font = "bold 11px system-ui, sans-serif";
+    const tw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = `rgba(61,122,237,${(pulse * 0.9).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.roundRect(x, y - 20, tw, 18, 4);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, x + 5, y - 6);
+  }
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -159,13 +158,14 @@ interface Props {
 export function ScanCamera({ onCapture, onClose }: Props) {
   const { t } = useI18n();
 
-  const videoRef    = useRef<HTMLVideoElement>(null);
-  const sampleRef   = useRef<HTMLCanvasElement>(null); // analysis canvas (hidden)
-  const captureRef  = useRef<HTMLCanvasElement>(null); // capture canvas (hidden)
-  const overlayRef  = useRef<HTMLCanvasElement>(null); // lesion overlay canvas
-  const streamRef   = useRef<MediaStream | null>(null);
-  const rafRef      = useRef<number>(0);
-  const lesionBoxRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const videoRef      = useRef<HTMLVideoElement>(null);
+  const sampleRef     = useRef<HTMLCanvasElement>(null);
+  const captureRef    = useRef<HTMLCanvasElement>(null);
+  const overlayRef    = useRef<HTMLCanvasElement>(null);
+  const streamRef     = useRef<MediaStream | null>(null);
+  const rafRef        = useRef<number>(0);
+  const predictRef    = useRef<RoboflowPrediction[]>([]);
+  const imgDimsRef    = useRef({ w: 200, h: 200 });
   const aiCameraOnRef = useRef(true);
 
   const [perm,           setPerm]          = useState<PermState>("idle");
@@ -221,29 +221,50 @@ export function ScanCamera({ onCapture, onClose }: Props) {
   // ── Detection + overlay loop ───────────────────────────────────────────
   useEffect(() => {
     if (perm !== "granted") return;
-    let last = 0;
+
+    // Fire-and-forget Roboflow inference call
+    const doDetect = () => {
+      if (!sampleRef.current || !aiCameraOnRef.current) return;
+      sampleRef.current.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          const res = await fetch("/api/detect", { method: "POST", body: blob });
+          if (!res.ok) return;
+          const data = await res.json() as {
+            predictions?: RoboflowPrediction[];
+            image?: { width: number; height: number };
+          };
+          imgDimsRef.current = { w: data.image?.width ?? 200, h: data.image?.height ?? 200 };
+          const preds = data.predictions ?? [];
+          predictRef.current = preds;
+          setLesionDetected(preds.some((p) => p.confidence >= 0.35));
+        } catch { /* network error — keep last predictions */ }
+      }, "image/jpeg", 0.85);
+    };
+
+    let last        = 0;
+    let lastDetect  = -9999;
+
     const loop = (now: number) => {
       rafRef.current = requestAnimationFrame(loop);
-      // Draw overlay every frame for smooth pulse
+
+      // Overlay drawn every frame for smooth pulse animation
       if (overlayRef.current) {
-        drawLesionOverlay(overlayRef.current, lesionBoxRef.current, now);
+        drawPredictions(overlayRef.current, predictRef.current, imgDimsRef.current.w, imgDimsRef.current.h, now);
       }
-      // Pixel analysis every 150 ms
-      if (now - last < 150) return;
-      last = now;
-      if (videoRef.current && sampleRef.current) {
-        setDet(analyzeFrame(videoRef.current, sampleRef.current));
-        if (aiCameraOnRef.current) {
-          const box = detectLesionInSample(sampleRef.current);
-          const SCALE = 256 / 200;
-          lesionBoxRef.current = box
-            ? { x: box.x * SCALE, y: box.y * SCALE, w: box.w * SCALE, h: box.h * SCALE }
-            : null;
-          setLesionDetected(!!box);
-        } else {
-          lesionBoxRef.current = null;
-          setLesionDetected(false);
+
+      // Skin analysis every 150 ms
+      if (now - last >= 150) {
+        last = now;
+        if (videoRef.current && sampleRef.current) {
+          setDet(analyzeFrame(videoRef.current, sampleRef.current));
         }
+      }
+
+      // Roboflow detect every 1 200 ms
+      if (now - lastDetect >= 1200) {
+        lastDetect = now;
+        doDetect();
       }
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -300,27 +321,28 @@ export function ScanCamera({ onCapture, onClose }: Props) {
 
   const aiLesionActive = aiCameraOn && lesionDetected;
 
+  const topPred    = predictRef.current[0];
   const statusText =
-    aiLesionActive ? "Новообразование найдено" :
-    isDark   ? t.scan.tooDark :
-    isBright ? t.scan.tooBright :
-    isBlurry ? t.scan.blurry :
-    skinOk   ? t.scan.skinDetected :
-               t.scan.alignSkin;
+    aiLesionActive
+      ? (topPred
+          ? `${CLASS_LABELS[topPred.class] ?? topPred.class} · ${Math.round(topPred.confidence * 100)}%`
+          : "Изменение обнаружено")
+      : isDark   ? t.scan.tooDark
+      : isBright ? t.scan.tooBright
+      : isBlurry ? t.scan.blurry
+      : skinOk   ? t.scan.skinDetected
+      :            t.scan.alignSkin;
 
   const statusColor =
-    aiLesionActive ? "text-red-400" :
-    ready ? "text-emerald-400" :
+    aiLesionActive ? "text-primary" :
+    ready ? "text-primary/80" :
     (isDark || isBright || isBlurry) ? "text-amber-400" :
     "text-white/70";
 
-  const frameColor   = aiLesionActive ? "border-red-400" : ready ? "border-emerald-400" : "border-[#4d9dff]";
-  const lineColor    = ready
-    ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]"
-    : "bg-[#4d9dff] shadow-[0_0_10px_rgba(77,157,255,0.7)]";
+  const frameColor = aiLesionActive ? "border-primary" : ready ? "border-primary/60" : "border-white/25";
 
   const shutterStyle = ready
-    ? "bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-[0_0_28px_rgba(52,211,153,0.45)]"
+    ? "bg-primary-gradient shadow-primary-glow ring-2 ring-primary/30"
     : "bg-primary-gradient shadow-primary-glow";
 
   // ── IDLE: permission prompt ────────────────────────────────────────────
@@ -332,7 +354,7 @@ export function ScanCamera({ onCapture, onClose }: Props) {
             <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center">
               <Icon name="photo_camera" filled className="text-primary text-6xl" />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <Icon name="check" className="text-white text-sm" />
             </div>
           </div>
@@ -477,47 +499,21 @@ export function ScanCamera({ onCapture, onClose }: Props) {
           <div className={`absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] ${frameColor} rounded-bl-[2rem] transition-colors duration-500`} />
           <div className={`absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] ${frameColor} rounded-br-[2rem] transition-colors duration-500`} />
 
-          {/* Lesion detection overlay canvas */}
+          {/* Roboflow bounding-box overlay canvas */}
           <canvas
             ref={overlayRef}
             width={256}
             height={256}
             className="absolute inset-0 w-full h-full pointer-events-none z-10"
           />
-
-          {/* Sweep scan line — contained within frame */}
-          <div
-            className="absolute inset-0 overflow-hidden pointer-events-none"
-            style={{ borderRadius: "2rem" }}
-          >
-            <div className={`animate-scan-sweep ${lineColor} transition-colors duration-500`} />
-          </div>
-
-          {/* Skin-coverage arc (SVG ring) */}
-          <svg
-            viewBox="0 0 256 256"
-            className="absolute inset-0 w-full h-full pointer-events-none opacity-25"
-            aria-hidden
-          >
-            <circle
-              cx="128" cy="128" r="110"
-              fill="none"
-              stroke={ready ? "#34d399" : "#4d9dff"}
-              strokeWidth="3"
-              strokeDasharray={`${Math.min((det.skinPct / 100) * 691.2, 691.2).toFixed(1)} 691.2`}
-              strokeLinecap="round"
-              transform="rotate(-90 128 128)"
-              style={{ transition: "stroke-dasharray 0.4s ease, stroke 0.5s ease" }}
-            />
-          </svg>
         </div>
 
         {/* Status badge */}
         <div className="flex items-center gap-2.5 bg-black/55 backdrop-blur-md px-5 py-2.5 rounded-full">
           {aiLesionActive ? (
-            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
           ) : ready ? (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-primary/50 animate-pulse flex-shrink-0" />
           ) : (
             <span className="w-2 h-2 rounded-full bg-white/30 flex-shrink-0" />
           )}
@@ -541,7 +537,7 @@ export function ScanCamera({ onCapture, onClose }: Props) {
             <div className="w-20 h-1.5 rounded-full bg-white/15 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  isDark ? "bg-amber-400" : isBright ? "bg-red-400" : "bg-emerald-400"
+                  isDark ? "bg-amber-400" : isBright ? "bg-red-400" : "bg-primary/70"
                 }`}
                 style={{ width: `${Math.round((det.brightness / 255) * 100)}%` }}
               />
@@ -553,7 +549,7 @@ export function ScanCamera({ onCapture, onClose }: Props) {
             <div className="w-20 h-1.5 rounded-full bg-white/15 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  isBlurry ? "bg-amber-400" : "bg-emerald-400"
+                  isBlurry ? "bg-amber-400" : "bg-primary/70"
                 }`}
                 style={{ width: `${Math.round(Math.min(det.sharpness, 100))}%` }}
               />
@@ -571,9 +567,9 @@ export function ScanCamera({ onCapture, onClose }: Props) {
           <div className="w-16 flex flex-col items-center gap-1">
             <Icon
               name="fingerprint"
-              className={`text-3xl transition-colors duration-300 ${skinOk ? "text-emerald-400" : "text-white/25"}`}
+              className={`text-3xl transition-colors duration-300 ${skinOk ? "text-primary" : "text-white/25"}`}
             />
-            <span className={`text-xs font-semibold transition-colors duration-300 ${skinOk ? "text-emerald-400" : "text-white/30"}`}>
+            <span className={`text-xs font-semibold transition-colors duration-300 ${skinOk ? "text-primary" : "text-white/30"}`}>
               {Math.round(det.skinPct)}%
             </span>
           </div>
@@ -592,9 +588,9 @@ export function ScanCamera({ onCapture, onClose }: Props) {
             <Icon
               name={ready ? "check_circle" : "radio_button_unchecked"}
               filled={ready}
-              className={`text-3xl transition-colors duration-300 ${ready ? "text-emerald-400" : "text-white/25"}`}
+              className={`text-3xl transition-colors duration-300 ${ready ? "text-primary" : "text-white/25"}`}
             />
-            <span className={`text-[10px] font-medium text-center leading-tight transition-colors duration-300 ${ready ? "text-emerald-400" : "text-white/30"}`}>
+            <span className={`text-[10px] font-medium text-center leading-tight transition-colors duration-300 ${ready ? "text-primary" : "text-white/30"}`}>
               {ready ? "Ready" : "Align"}
             </span>
           </div>
