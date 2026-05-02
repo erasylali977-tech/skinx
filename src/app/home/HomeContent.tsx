@@ -75,46 +75,33 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
         <section className="px-4 mb-4">
           <Link
             href="/scan"
-            className="relative w-full rounded-[28px] overflow-hidden flex flex-col justify-between active:scale-[0.98] transition-transform duration-200"
+            className="relative w-full rounded-[24px] overflow-hidden flex flex-col justify-between active:scale-[0.98] transition-transform duration-200"
             style={{
-              background: "linear-gradient(135deg, #3d7aed 0%, #5b54f0 50%, #7c3aed 100%)",
-              boxShadow: "0 16px 48px rgba(61,122,237,0.35), 0 4px 16px rgba(0,0,0,0.12)",
-              minHeight: "220px",
+              background: "linear-gradient(135deg, #3d7aed 0%, #2d62d4 100%)",
+              boxShadow: "0 8px 32px rgba(61,122,237,0.30)",
+              minHeight: "160px",
             }}
           >
-            {/* Decorative blobs */}
-            <div className="absolute top-[-30px] right-[-30px] w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-            <div className="absolute bottom-[-20px] left-[-20px] w-36 h-36 rounded-full bg-white/8 blur-2xl" />
+            {/* Subtle blob */}
+            <div className="absolute top-[-20px] right-[-20px] w-40 h-40 rounded-full bg-white/8 blur-2xl pointer-events-none" />
 
-            {/* Top row */}
-            <div className="relative z-10 flex items-start justify-between px-6 pt-6">
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                <span className="text-white text-[11px] font-semibold tracking-wider uppercase">Gemini AI</span>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center">
-                <Icon name="biotech" className="text-white text-xl" />
-              </div>
-            </div>
-
-            {/* Bottom content */}
-            <div className="relative z-10 px-6 pb-6 mt-6">
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
-                {t.home.heroTitle}
-              </p>
-              <p className="text-white text-[22px] font-black leading-tight tracking-tight mb-5">
-                {t.home.heroSubtitle}
-              </p>
-
-              {/* CTA row */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Icon name="my_location" className="text-white/80 text-sm flex-shrink-0" />
-                  <span className="text-white text-sm font-semibold">{t.home.selectZoneBtn}</span>
+            {/* Content */}
+            <div className="relative z-10 px-5 py-5 flex items-center justify-between h-full">
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                  <span className="text-white/70 text-[11px] font-semibold uppercase tracking-widest">Gemini AI</span>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center flex-shrink-0">
-                  <Icon name="arrow_forward" className="text-primary text-base" />
+                <p className="text-white text-[20px] font-black leading-tight tracking-tight mb-4">
+                  {t.home.heroSubtitle}
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2.5">
+                  <Icon name="document_scanner" className="text-white text-sm" />
+                  <span className="text-white text-sm font-bold">{t.home.heroTitle}</span>
                 </div>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center ml-4 flex-shrink-0">
+                <Icon name="arrow_forward" className="text-white text-base" />
               </div>
             </div>
           </Link>
