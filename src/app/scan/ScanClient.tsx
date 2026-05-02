@@ -225,25 +225,28 @@ export function ScanClient() {
   const [uploading,    setUploading]    = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [cameraOpen,   setCameraOpen]   = useState(false);
-  const boxCanvasRef                      = useRef<HTMLCanvasElement | null>(null);
-  const [detecting,       setDetecting]       = useState(false);
-  const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+  const boxCanvasRef                          = useRef<HTMLCanvasElement | null>(null);
+  const [detecting,          setDetecting]          = useState(false);
+  const [detectionResult,    setDetectionResult]    = useState<DetectionResult | null>(null);
+  const [detectionAttempted, setDetectionAttempted] = useState(false);
 
   // ── Auto-detect after capture for smart-crop zones ─────────────────────
   function triggerDetection(capturedFile: File, zone: ImageZoneId | null) {
     if (!zone || !SMART_CROP_ZONES.has(zone)) return;
     setDetecting(true);
     setDetectionResult(null);
+    setDetectionAttempted(false);
     fetch(`/api/detect?zone=${encodeURIComponent(zone)}`, { method: "POST", body: capturedFile })
       .then(r => r.ok ? r.json() : null)
       .then((data: { predictions?: RoboflowBox[]; image?: { width: number; height: number } } | null) => {
+        setDetectionAttempted(true);
         if (!data) return;
         const best = (data.predictions ?? []).sort((a, b) => b.confidence - a.confidence)[0];
         if (best && best.confidence >= 0.20) {
           setDetectionResult({ box: best, imgW: data.image?.width ?? 640, imgH: data.image?.height ?? 640 });
         }
       })
-      .catch(() => {})
+      .catch(() => { setDetectionAttempted(true); })
       .finally(() => setDetecting(false));
   }
 
@@ -253,6 +256,7 @@ export function ScanClient() {
     setCameraOpen(false);
     setError(null);
     setDetectionResult(null);
+    setDetectionAttempted(false);
     triggerDetection(capturedFile, selectedZone);
   }
 
@@ -265,6 +269,7 @@ export function ScanClient() {
     setPreview(URL.createObjectURL(f));
     setError(null);
     setDetectionResult(null);
+    setDetectionAttempted(false);
     triggerDetection(f, selectedZone);
   }
 
@@ -273,6 +278,7 @@ export function ScanClient() {
     setPreview(null);
     setCameraOpen(true);
     setDetectionResult(null);
+    setDetectionAttempted(false);
     setDetecting(false);
   }
 
@@ -524,12 +530,14 @@ export function ScanClient() {
             )}
             <span className="text-sm font-medium">
               {detecting
-                ? "Detecting lesion…"
+                ? "Сканируем поражённую область…"
                 : detectionResult
-                  ? `Detected: ${detectionResult.box.class} ${Math.round(detectionResult.box.confidence * 100)}%`
-                  : preview
-                    ? t.scan.imageReady
-                    : t.scan.holdSteady}
+                  ? `Найдено: ${detectionResult.box.class} — ${Math.round(detectionResult.box.confidence * 100)}%`
+                  : detectionAttempted
+                    ? "Очаги не очерчены — анализ по полному фото"
+                    : preview
+                      ? t.scan.imageReady
+                      : t.scan.holdSteady}
             </span>
           </div>
         </main>
