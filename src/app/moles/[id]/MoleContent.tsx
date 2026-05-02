@@ -17,74 +17,161 @@ function nextScanDate(createdAt: string, level: "low" | "medium" | "high", local
   return d.toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ── Canvas helpers (client-side only, called inside useEffect) ─────────────────
-function thermalColor(gray: number): [number, number, number] {
-  const t = Math.max(0, Math.min(1, gray / 255));
-  let r = 0, g = 0, b = 0;
-  if (t < 0.25)      { b = 1; g = t * 4; }
-  else if (t < 0.5)  { g = 1; b = 1 - (t - 0.25) * 4; }
-  else if (t < 0.75) { r = (t - 0.5) * 4; g = 1; }
-  else               { r = 1; g = 1 - (t - 0.75) * 4; }
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+// ── Canvas helpers (client-side, results page) ──────────────────────────────────
+
+// Green = healthy skin, Yellow/Orange = deviation, Red = high anomaly
+function skinThermalColor(t: number): [number, number, number] {
+  const v = Math.max(0, Math.min(1, t));
+  if (v < 0.5) return [Math.round(v * 2 * 255), 255, 0];
+  const s = (v - 0.5) * 2;
+  return [255, Math.round((1 - s) * 255), 0];
 }
 
+function boxBlur(src: Float32Array, W: number, H: number, r: number): Float32Array {
+  const tmp = new Float32Array(W * H);
+  const out = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    let sum = 0;
+    for (let x = 0; x < Math.min(r, W); x++) sum += src[y * W + x];
+    for (let x = 0; x < W; x++) {
+      if (x + r < W) sum += src[y * W + x + r];
+      if (x - r - 1 >= 0) sum -= src[y * W + x - r - 1];
+      tmp[y * W + x] = sum / (Math.min(x + r + 1, W) - Math.max(0, x - r));
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    let sum = 0;
+    for (let y = 0; y < Math.min(r, H); y++) sum += tmp[y * W + x];
+    for (let y = 0; y < H; y++) {
+      if (y + r < H) sum += tmp[(y + r) * W + x];
+      if (y - r - 1 >= 0) sum -= tmp[(y - r - 1) * W + x];
+      out[y * W + x] = sum / (Math.min(y + r + 1, H) - Math.max(0, y - r));
+    }
+  }
+  return out;
+}
+
+function getSkinMedian(px: Uint8ClampedArray, W: number, H: number): [number, number, number] {
+  const sr = Math.floor(Math.min(W, H) * 0.15);
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  let rS = 0, gS = 0, bS = 0, n = 0;
+  for (let y = cy - sr; y <= cy + sr; y++)
+    for (let x = cx - sr; x <= cx + sr; x++) {
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      const i = (y * W + x) * 4;
+      rS += px[i]; gS += px[i+1]; bS += px[i+2]; n++;
+    }
+  return n > 0 ? [rS/n, gS/n, bS/n] : [128, 100, 90];
+}
+
+// Skin-anomaly thermal: chromatic deviation from median → green→orange→red
 function generateHeatmapUrl(img: HTMLImageElement): string {
   const MAX = 400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-  const W = Math.round((img.naturalWidth || MAX) * scale);
-  const H = Math.round((img.naturalHeight || MAX) * scale);
-  const c = document.createElement("canvas");
-  c.width = W; c.height = H;
+  const W = Math.max(1, Math.round((img.naturalWidth  || MAX) * scale));
+  const H = Math.max(1, Math.round((img.naturalHeight || MAX) * scale));
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d")!;
   ctx.drawImage(img, 0, 0, W, H);
   const id = ctx.getImageData(0, 0, W, H);
-  for (let i = 0; i < id.data.length; i += 4) {
-    const gray = 0.299 * id.data[i] + 0.587 * id.data[i + 1] + 0.114 * id.data[i + 2];
-    const [r, g, b] = thermalColor(gray);
-    id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
+  const px = id.data;
+  const [mr, mg, mb] = getSkinMedian(px, W, H);
+
+  const anom = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const dr = px[i*4]-mr, dg = px[i*4+1]-mg, db = px[i*4+2]-mb;
+    anom[i] = Math.sqrt(dr*dr + dg*dg + db*db);
+  }
+  const blurred = boxBlur(anom, W, H, Math.max(2, Math.floor(Math.min(W, H) * 0.04)));
+  const sorted  = Float32Array.from(blurred).sort();
+  const p95     = sorted[Math.floor(sorted.length * 0.95)] || 1;
+
+  for (let i = 0; i < W * H; i++) {
+    const t = Math.min(1, blurred[i] / p95);
+    const [tr, tg, tb] = skinThermalColor(t);
+    const o = i * 4;
+    id.data[o]   = Math.round(tr * 0.65 + px[o]   * 0.35);
+    id.data[o+1] = Math.round(tg * 0.65 + px[o+1] * 0.35);
+    id.data[o+2] = Math.round(tb * 0.65 + px[o+2] * 0.35);
   }
   ctx.putImageData(id, 0, 0);
-  const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.7);
-  grad.addColorStop(0, "rgba(0,0,20,0)");
-  grad.addColorStop(0.6, "rgba(0,0,50,0.15)");
-  grad.addColorStop(1, "rgba(0,0,110,0.8)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
   return c.toDataURL("image/jpeg", 0.88);
 }
 
-function generateSegmentUrl(img: HTMLImageElement): string {
+// AI detection overlay: bbox around top anomaly cluster + diagnosis label
+function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string): string {
   const MAX = 400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-  const W = Math.round((img.naturalWidth || MAX) * scale);
-  const H = Math.round((img.naturalHeight || MAX) * scale);
-  const c = document.createElement("canvas");
-  c.width = W; c.height = H;
+  const W = Math.max(1, Math.round((img.naturalWidth  || MAX) * scale));
+  const H = Math.max(1, Math.round((img.naturalHeight || MAX) * scale));
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#000a18";
-  ctx.fillRect(0, 0, W, H);
-  const rx = W * 0.43, ry = H * 0.42, cx = W / 2, cy = H / 2;
-  ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  ctx.clip();
   ctx.drawImage(img, 0, 0, W, H);
-  ctx.restore();
-  const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.45, cx, cy, Math.max(rx, ry) * 1.05);
-  grad.addColorStop(0, "rgba(0,10,24,0)");
-  grad.addColorStop(0.7, "rgba(0,10,24,0.15)");
-  grad.addColorStop(0.9, "rgba(0,10,24,0.85)");
-  grad.addColorStop(1, "rgba(0,10,24,1)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  const id = ctx.getImageData(0, 0, W, H);
+  const px = id.data;
+  const [mr, mg, mb] = getSkinMedian(px, W, H);
+
+  const anom = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const dr = px[i*4]-mr, dg = px[i*4+1]-mg, db = px[i*4+2]-mb;
+    anom[i] = Math.sqrt(dr*dr + dg*dg + db*db);
+  }
+
+  // Bounding box of top 12% anomalous pixels
+  const sorted = Float32Array.from(anom).sort();
+  const thresh = sorted[Math.floor(sorted.length * 0.88)];
+  let x0 = W, x1 = 0, y0 = H, y1 = 0, found = false;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (anom[y * W + x] >= thresh) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+        found = true;
+      }
+
+  if (!found) { ctx.putImageData(id, 0, 0); return c.toDataURL("image/jpeg", 0.88); }
+
+  const pad = Math.round(Math.min(W, H) * 0.05);
+  const bx = Math.max(0, x0 - pad), by = Math.max(0, y0 - pad);
+  const bw = Math.min(W - bx, x1 - x0 + pad * 2), bh = Math.min(H - by, y1 - y0 + pad * 2);
+
+  // Dim outside bbox
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (!(x >= bx && x <= bx+bw && y >= by && y <= by+bh)) {
+        const i = (y*W+x)*4;
+        id.data[i] = Math.round(px[i]*0.45); id.data[i+1] = Math.round(px[i+1]*0.45); id.data[i+2] = Math.round(px[i+2]*0.45);
+      }
+  ctx.putImageData(id, 0, 0);
+
+  // Glowing bbox
   ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, rx * 0.87, ry * 0.87, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(100,210,255,0.65)";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 4]);
-  ctx.stroke();
+  ctx.shadowColor = "rgba(77,157,255,0.85)"; ctx.shadowBlur = 16;
+  ctx.strokeStyle = "rgba(77,157,255,0.95)"; ctx.lineWidth = 2;
+  ctx.strokeRect(bx, by, bw, bh);
   ctx.restore();
+
+  // Corner ticks
+  const tc = 12;
+  ctx.strokeStyle = "rgba(255,255,255,0.92)"; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(bx, by+tc);       ctx.lineTo(bx, by);       ctx.lineTo(bx+tc, by);
+  ctx.moveTo(bx+bw-tc, by);    ctx.lineTo(bx+bw, by);    ctx.lineTo(bx+bw, by+tc);
+  ctx.moveTo(bx, by+bh-tc);    ctx.lineTo(bx, by+bh);    ctx.lineTo(bx+tc, by+bh);
+  ctx.moveTo(bx+bw-tc, by+bh); ctx.lineTo(bx+bw, by+bh); ctx.lineTo(bx+bw, by+bh-tc);
+  ctx.stroke();
+
+  // Diagnosis label pill
+  if (primaryDx) {
+    ctx.font = "bold 11px system-ui, sans-serif";
+    const tw = ctx.measureText(primaryDx).width + 14;
+    const lx = Math.min(bx, W - tw - 2), ly = Math.max(2, by - 22);
+    ctx.fillStyle = "rgba(61,122,237,0.92)";
+    ctx.beginPath(); ctx.roundRect(lx, ly, tw, 19, 4); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(primaryDx, lx + 7, ly + 13);
+  }
+
   return c.toDataURL("image/jpeg", 0.88);
 }
 
@@ -159,13 +246,14 @@ function SemicircleGauge({ score, level }: { score: number; level: "low" | "medi
 
 // ── Hero Carousel: Original → Heatmap → Segmentation ────────────────────────
 function HeroCarousel({
-  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date,
+  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date, primaryDx,
 }: {
   imageUrl: string | null;
   riskBadge: string;
   riskLevelLabel: string;
   zoneLabel: string;
   date: string;
+  primaryDx?: string;
 }) {
   const { t } = useI18n();
   const [slide, setSlide] = useState(0);
@@ -179,15 +267,15 @@ function HeroCarousel({
     img.crossOrigin = "anonymous";
     img.onload = () => {
       setHeatUrl(generateHeatmapUrl(img));
-      setSegUrl(generateSegmentUrl(img));
+      setSegUrl(generateSegmentUrl(img, primaryDx));
     };
     img.src = imageUrl;
-  }, [imageUrl]);
+  }, [imageUrl, primaryDx]);
 
   const slides = [
-    { url: imageUrl, badge: "ORIGINAL" },
-    { url: heatUrl,  badge: "THERMAL"  },
-    { url: segUrl,   badge: "SEGMENT"  },
+    { url: imageUrl, badge: "ОРИГИНАЛ" },
+    { url: heatUrl,  badge: "ТЕПЛОВИЗОР" },
+    { url: segUrl,   badge: "AI ДЕТЕКЦИЯ" },
   ];
 
   const current = slides[slide];
@@ -362,6 +450,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           riskLevelLabel={t.riskLevels[scan.risk_level]}
           zoneLabel={getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}
           date={formatDate(scan.created_at)}
+          primaryDx={scan.differential_diagnosis?.[0]?.name}
         />
 
         <div className="px-4 space-y-4">
