@@ -1,9 +1,8 @@
 "use client";
 import Image from "next/image";
 import { Icon } from "@/components/Icon";
-import { ZONE_DETAIL_MAP, type ImageZoneId } from "@/lib/zoneDetails";
+import { ZONE_DETAIL_MAP, type ImageZoneId, type BodyGender } from "@/lib/zoneDetails";
 import { useI18n } from "@/lib/i18n/context";
-import type { BodyGender } from "@/lib/bodyZones";
 
 interface Props {
   zone: ImageZoneId;

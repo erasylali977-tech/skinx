@@ -5,8 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 import { ScanCamera } from "./ScanCamera";
-import { type BodyGender } from "@/lib/bodyZones";
-import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
+import { type ImageZoneId, type BodyGender, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { ZoneGrid } from "@/components/ZoneGrid";
 import { cropByBoundingBox, type RoboflowBox } from "@/lib/utils/imageProcessing";
 

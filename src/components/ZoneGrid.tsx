@@ -1,8 +1,7 @@
 "use client";
 import Image from "next/image";
-import { ZONE_DETAILS, type ImageZoneId } from "@/lib/zoneDetails";
+import { ZONE_DETAILS, type ImageZoneId, type BodyGender } from "@/lib/zoneDetails";
 import { useI18n } from "@/lib/i18n/context";
-import type { BodyGender } from "@/lib/bodyZones";
 
 interface Props {
   gender: BodyGender;

@@ -1,5 +1,7 @@
 import type { Locale } from "@/lib/i18n/translations";
 
+export type BodyGender = "male" | "female";
+
 export type ImageZoneId =
   | "face"
   | "neck"
