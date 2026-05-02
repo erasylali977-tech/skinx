@@ -8,6 +8,11 @@ import { ScanCamera } from "./ScanCamera";
 import { type BodyGender } from "@/lib/bodyZones";
 import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { ZoneGrid } from "@/components/ZoneGrid";
+import { cropByBoundingBox, type RoboflowBox } from "@/lib/utils/imageProcessing";
+
+// Zones that use Workflow A: Roboflow detect → smart crop → Gemini analysis
+// All other zones go directly to Gemini with the full image (existing behaviour).
+const SMART_CROP_ZONES = new Set<ImageZoneId>(["face", "arms"]);
 
 // ── Canvas effect helpers ───────────────────────────────────────────────────
 function thermalColor(gray: number): [number, number, number] {
@@ -243,9 +248,39 @@ export function ScanClient() {
     if (!file) { setCameraOpen(true); return; }
     setUploading(true);
     setError(null);
+
+    // ── Workflow A: smart crop for face / arms zones ─────────────────────
+    // For these zones Roboflow detects the lesion first, we crop tightly
+    // around the best bounding box, then send the crop to Gemini.
+    // All other zones skip straight to Gemini with the full image.
+    let fileToAnalyze: File = file;
+    if (selectedZone && SMART_CROP_ZONES.has(selectedZone)) {
+      try {
+        const detectRes = await fetch("/api/detect", { method: "POST", body: file });
+        if (detectRes.ok) {
+          const detectData = await detectRes.json() as {
+            predictions?: RoboflowBox[];
+            image?: { width: number; height: number };
+          };
+          const preds = (detectData.predictions ?? [])
+            .sort((a, b) => b.confidence - a.confidence);
+          const best = preds[0];
+          if (best && best.confidence >= 0.3) {
+            fileToAnalyze = await cropByBoundingBox(
+              file,
+              best,
+              detectData.image?.width  ?? 640,
+              detectData.image?.height ?? 640,
+            );
+          }
+          // If no confident detection: fall through — full image sent to Gemini
+        }
+      } catch { /* network error — fall through to full image */ }
+    }
+
     try {
       const fd = new FormData();
-      fd.append("image", file);
+      fd.append("image", fileToAnalyze);
       if (selectedZone) fd.append("body_area", selectedZone);
       fd.append("locale", locale);
       const res = await fetch("/api/scans", { method: "POST", body: fd });
@@ -255,7 +290,6 @@ export function ScanClient() {
         throw new Error(j.error || t.scan.uploadFailed);
       }
       const j = await res.json();
-      // Keep overlay visible during navigation — component unmounts when new page loads
       router.push(`/moles/${j.id}`);
       router.refresh();
     } catch (e: unknown) {
