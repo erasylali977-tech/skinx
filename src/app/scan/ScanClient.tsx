@@ -366,51 +366,56 @@ export function ScanClient() {
     }
   }
 
-  // ── Step: zone grid ────────────────────────────────────────────────────
+  // ── Step: zone grid ─────────────────────────────────────────────────────
   if (step === "zones") {
     return (
       <div className="h-screen w-screen flex flex-col bg-background text-on-surface overflow-hidden">
+
         {/* Header */}
-        <header className="flex-shrink-0 flex justify-between items-center px-5 pt-14 pb-3">
-          <Link
-            href="/home"
-            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
-          >
-            <Icon name="close" />
-          </Link>
+        <header className="flex-shrink-0 px-5 pt-14 pb-4">
+          <div className="flex items-center justify-between mb-5">
+            <Link
+              href="/home"
+              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <Icon name="close" />
+            </Link>
 
-          <div className="text-center">
-            <h1 className="text-sm font-semibold">{t.scan.selectZoneTitle}</h1>
-            <p className="text-on-surface-variant text-[11px]">{t.scan.tapBodyArea}</p>
+            {/* Segmented gender toggle */}
+            <div className="flex bg-surface-container rounded-2xl p-1 gap-0.5">
+              <button
+                onClick={() => changeGender("male")}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  gender === "male"
+                    ? "bg-background text-on-surface shadow-sm"
+                    : "text-on-surface-variant"
+                }`}
+              >
+                {locale === "ru" ? "Мужской" : locale === "kk" ? "Ер" : "Male"}
+              </button>
+              <button
+                onClick={() => changeGender("female")}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  gender === "female"
+                    ? "bg-background text-on-surface shadow-sm"
+                    : "text-on-surface-variant"
+                }`}
+              >
+                {locale === "ru" ? "Женский" : locale === "kk" ? "Әйел" : "Female"}
+              </button>
+            </div>
           </div>
 
-          {/* Gender toggle */}
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => changeGender("male")}
-              className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
-                gender === "male"
-                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/40"
-                  : "bg-surface-container text-on-surface-variant"
-              }`}
-            >
-              <span style={{ lineHeight: 0, fontSize: "28px" }}>♂</span>
-            </button>
-            <button
-              onClick={() => changeGender("female")}
-              className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold transition-all active:scale-95 ${
-                gender === "female"
-                  ? "bg-pink-500 text-white shadow-lg shadow-pink-500/40"
-                  : "bg-surface-container text-on-surface-variant"
-              }`}
-            >
-              <span style={{ lineHeight: 0, fontSize: "28px" }}>♀</span>
-            </button>
-          </div>
+          <h1 className="text-[26px] font-black tracking-tight leading-tight">
+            {t.scan.selectZoneTitle}
+          </h1>
+          <p className="text-on-surface-variant text-sm mt-1">
+            {t.scan.tapBodyArea}
+          </p>
         </header>
 
         {/* Zone grid */}
-        <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="flex-1 overflow-y-auto px-4 pb-10">
           <ZoneGrid
             gender={gender}
             onSelect={(zone) => {

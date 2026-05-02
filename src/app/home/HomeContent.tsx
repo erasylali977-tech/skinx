@@ -16,27 +16,41 @@ type Props = {
   thumbs: (string | null)[];
 };
 
+const RISK_COLORS = {
+  low:    { bg: "bg-emerald-500/15", text: "text-emerald-500", dot: "bg-emerald-500" },
+  medium: { bg: "bg-amber-400/15",   text: "text-amber-500",   dot: "bg-amber-400"  },
+  high:   { bg: "bg-red-500/15",     text: "text-red-500",     dot: "bg-red-500"    },
+};
+
 export function HomeContent({ firstName, scans, thumbs }: Props) {
   const { t, locale } = useI18n();
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface pb-28">
+    <div className="min-h-screen bg-background text-on-surface pb-28">
       <DisclaimerModal />
       <AppHeader />
-      <main className="pt-24 px-6 max-w-md mx-auto md:max-w-4xl">
-        <section className="mb-10">
-          <h1 className="text-[32px] leading-tight font-extrabold tracking-tight mb-2">
-            {t.home.greeting}, {firstName}
+
+      <main className="pt-20 max-w-md mx-auto md:max-w-4xl">
+
+        {/* ── Greeting ── */}
+        <section className="px-6 pt-6 pb-8">
+          <p className="text-on-surface-variant text-sm font-medium mb-1 uppercase tracking-widest">
+            SkinX
+          </p>
+          <h1 className="text-[34px] leading-[1.1] font-black tracking-tight">
+            {t.home.greeting},<br />{firstName}
           </h1>
-          <p className="text-on-surface-variant font-medium text-lg">
+          <p className="text-on-surface-variant mt-2 text-base">
             {t.home.subtitle}
           </p>
         </section>
 
-        <section className="mb-12">
+        {/* ── Hero CTA ── */}
+        <section className="px-4 mb-10">
           <Link
             href="/scan"
-            className="relative w-full rounded-[24px] overflow-hidden flex flex-col justify-end min-h-[220px] active:scale-[0.98] transition-transform duration-200 shadow-ambient-xl"
+            className="relative w-full rounded-[28px] overflow-hidden flex flex-col justify-end min-h-[240px] active:scale-[0.98] transition-transform duration-200"
+            style={{ boxShadow: "0 20px 60px rgba(61,122,237,0.25), 0 4px 20px rgba(0,0,0,0.15)" }}
           >
             <Image
               src="/scan-hero.jpeg"
@@ -45,83 +59,110 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
               className="object-cover object-center"
               priority
             />
-            {/* overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
-            {/* content */}
-            <div className="relative z-10 px-6 pb-6 pt-16">
-              <h2 className="text-white text-xl font-bold leading-snug mb-1 drop-shadow-md">
+            {/* Gradient layers */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent" />
+
+            {/* Top badge */}
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-white text-[11px] font-semibold tracking-wide uppercase">AI Ready</span>
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 px-6 pb-6">
+              <h2 className="text-white text-2xl font-black leading-tight tracking-tight mb-1.5">
                 {t.home.heroTitle}
               </h2>
-              <p
-                className="text-white text-xs leading-relaxed mb-4 max-w-[260px]"
-                style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
-              >
+              <p className="text-white/65 text-sm leading-relaxed mb-5 max-w-[260px]">
                 {t.home.heroSubtitle}
               </p>
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-4 py-2">
-                <Icon name="my_location" className="text-white text-base" />
-                <span className="text-white text-sm font-semibold">{t.home.selectZoneBtn}</span>
+
+              {/* CTA button row */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-2xl px-4 py-3">
+                  <Icon name="my_location" className="text-white text-base flex-shrink-0" />
+                  <span className="text-white text-sm font-semibold">{t.home.selectZoneBtn}</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Icon name="arrow_forward" className="text-white text-base" />
+                </div>
               </div>
             </div>
           </Link>
         </section>
 
-        <section>
-          <div className="flex justify-between items-end mb-6 px-1">
-            <h2 className="text-xl font-bold tracking-tight">{t.home.recentScans}</h2>
+        {/* ── Recent Scans ── */}
+        <section className="px-4">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-xl font-black tracking-tight">{t.home.recentScans}</h2>
             <Link
-              href="/dashboard"
-              className="text-primary font-medium text-sm hover:opacity-70"
+              href="/moles"
+              className="text-primary font-semibold text-sm flex items-center gap-1"
             >
               {t.common.seeAll}
+              <Icon name="chevron_right" className="text-sm" />
             </Link>
           </div>
+
           {scans.length === 0 ? (
-            <div className="bg-surface-container-lowest rounded-[24px] p-8 text-center shadow-ambient">
-              <Icon name="image_search" className="text-5xl text-outline-variant" />
-              <h3 className="font-bold text-on-surface text-lg mt-3">
+            <div className="bg-surface-container rounded-3xl p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center mx-auto mb-4">
+                <Icon name="image_search" className="text-3xl text-outline-variant" />
+              </div>
+              <h3 className="font-bold text-on-surface text-base mb-1">
                 {t.home.noScans}
               </h3>
-              <p className="text-on-surface-variant text-sm mt-1">
+              <p className="text-on-surface-variant text-sm">
                 {t.home.noScansHint}
               </p>
             </div>
           ) : (
-            <div className="flex overflow-x-auto gap-4 pb-6 hide-scrollbar -mx-6 px-6 snap-x">
-              {scans.map((s, i) => (
-                <Link
-                  key={s.id}
-                  href={`/moles/${s.id}`}
-                  className="min-w-[280px] bg-surface-container-lowest rounded-[24px] p-4 snap-center shadow-ambient flex flex-col gap-4"
-                >
-                  <div className="relative w-full h-32 rounded-[16px] overflow-hidden bg-surface-container-low">
-                    {thumbs[i] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumbs[i] as string}
-                        alt={getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Icon name="image" className="text-4xl text-outline-variant" />
+            <div className="flex overflow-x-auto gap-3 pb-4 hide-scrollbar -mx-4 px-4 snap-x">
+              {scans.map((s, i) => {
+                const rc = RISK_COLORS[s.risk_level];
+                return (
+                  <Link
+                    key={s.id}
+                    href={`/moles/${s.id}`}
+                    className="min-w-[220px] bg-surface-container rounded-3xl overflow-hidden snap-center active:scale-[0.97] transition-transform duration-150 flex flex-col"
+                    style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+                  >
+                    {/* Photo */}
+                    <div className="relative w-full h-[140px] bg-surface-container-high">
+                      {thumbs[i] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbs[i] as string}
+                          alt={getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Icon name="image" className="text-4xl text-outline-variant" />
+                        </div>
+                      )}
+                      {/* Risk pill */}
+                      <div className={`absolute top-3 right-3 flex items-center gap-1.5 ${rc.bg} backdrop-blur-sm px-2.5 py-1 rounded-full`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${rc.dot}`} />
+                        <span className={`text-[10px] font-bold uppercase tracking-wide ${rc.text}`}>
+                          {s.risk_score}
+                        </span>
                       </div>
-                    )}
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-xs font-bold text-primary">
-                      {t.home.score}: {100 - s.risk_score}
                     </div>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-on-surface text-lg mb-1">
-                      {getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
-                    </h3>
-                    <div className="flex items-center text-on-surface-variant text-sm gap-1.5">
-                      <Icon name="calendar_today" className="text-[16px]" />
-                      <span>{formatDateTime(s.created_at)}</span>
+
+                    {/* Info */}
+                    <div className="px-4 py-3 flex flex-col gap-1">
+                      <p className="font-bold text-on-surface text-sm leading-tight">
+                        {getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
+                      </p>
+                      <p className="text-on-surface-variant text-xs">
+                        {formatDateTime(s.created_at)}
+                      </p>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>
