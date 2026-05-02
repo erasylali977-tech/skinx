@@ -9,9 +9,14 @@ import { type ImageZoneId, type BodyGender, ZONE_DETAIL_MAP } from "@/lib/zoneDe
 import { ZoneGrid } from "@/components/ZoneGrid";
 import { cropByBoundingBox, type RoboflowBox } from "@/lib/utils/imageProcessing";
 
-// Zones that use Workflow A: Roboflow detect → smart crop → Gemini analysis
-// All other zones go directly to Gemini with the full image (existing behaviour).
+// Zones that use Smart Capture: Roboflow detect → bbox overlay → crop → Gemini
 const SMART_CROP_ZONES = new Set<ImageZoneId>(["face", "arms"]);
+
+interface DetectionResult {
+  box: RoboflowBox;
+  imgW: number;
+  imgH: number;
+}
 
 // ── Canvas effect helpers ───────────────────────────────────────────────────
 function thermalColor(gray: number): [number, number, number] {
@@ -220,12 +225,35 @@ export function ScanClient() {
   const [uploading,    setUploading]    = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [cameraOpen,   setCameraOpen]   = useState(false);
+  const boxCanvasRef                      = useRef<HTMLCanvasElement | null>(null);
+  const [detecting,       setDetecting]       = useState(false);
+  const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+
+  // ── Auto-detect after capture for smart-crop zones ─────────────────────
+  function triggerDetection(capturedFile: File, zone: ImageZoneId | null) {
+    if (!zone || !SMART_CROP_ZONES.has(zone)) return;
+    setDetecting(true);
+    setDetectionResult(null);
+    fetch(`/api/detect?zone=${encodeURIComponent(zone)}`, { method: "POST", body: capturedFile })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { predictions?: RoboflowBox[]; image?: { width: number; height: number } } | null) => {
+        if (!data) return;
+        const best = (data.predictions ?? []).sort((a, b) => b.confidence - a.confidence)[0];
+        if (best && best.confidence >= 0.20) {
+          setDetectionResult({ box: best, imgW: data.image?.width ?? 640, imgH: data.image?.height ?? 640 });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setDetecting(false));
+  }
 
   function handleCapture(capturedFile: File, previewUrl: string) {
     setFile(capturedFile);
     setPreview(previewUrl);
     setCameraOpen(false);
     setError(null);
+    setDetectionResult(null);
+    triggerDetection(capturedFile, selectedZone);
   }
 
   function openGallery() { fileRef.current?.click(); }
@@ -236,46 +264,70 @@ export function ScanClient() {
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setError(null);
+    setDetectionResult(null);
+    triggerDetection(f, selectedZone);
   }
 
   function retake() {
     setFile(null);
     setPreview(null);
     setCameraOpen(true);
+    setDetectionResult(null);
+    setDetecting(false);
   }
+
+  // ── Draw detection bbox on the preview canvas ─────────────────────────
+  useEffect(() => {
+    const canvas = boxCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!detectionResult) return;
+
+    const { box, imgW, imgH } = detectionResult;
+    const cw = canvas.width;   // 256
+    const ch = canvas.height;  // 256
+
+    // Scale accounting for object-cover in square canvas
+    const scale = Math.max(cw / imgW, ch / imgH);
+    const ox = (cw - imgW * scale) / 2;
+    const oy = (ch - imgH * scale) / 2;
+    const x = (box.x - box.width  / 2) * scale + ox;
+    const y = (box.y - box.height / 2) * scale + oy;
+    const w = box.width  * scale;
+    const h = box.height * scale;
+
+    ctx.strokeStyle = "rgba(77,157,255,0.95)";
+    ctx.lineWidth   = 2.5;
+    ctx.strokeRect(x, y, w, h);
+
+    const label = `${box.class}  ${Math.round(box.confidence * 100)}%`;
+    ctx.font = "bold 11px system-ui, sans-serif";
+    const tw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = "rgba(61,122,237,0.92)";
+    ctx.fillRect(x, Math.max(0, y - 20), tw, 18);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, x + 5, Math.max(12, y - 6));
+  }, [detectionResult]);
 
   async function submit() {
     if (!file) { setCameraOpen(true); return; }
     setUploading(true);
     setError(null);
 
-    // ── Workflow A: smart crop for face / arms zones ─────────────────────
-    // For these zones Roboflow detects the lesion first, we crop tightly
-    // around the best bounding box, then send the crop to Gemini.
-    // All other zones skip straight to Gemini with the full image.
+    // Use pre-computed detection result (from triggerDetection after capture).
+    // If detection found a bbox → crop to it. Otherwise send full image.
     let fileToAnalyze: File = file;
-    if (selectedZone && SMART_CROP_ZONES.has(selectedZone)) {
+    if (detectionResult) {
       try {
-        const detectRes = await fetch(`/api/detect?zone=${encodeURIComponent(selectedZone ?? "")}`, { method: "POST", body: file });
-        if (detectRes.ok) {
-          const detectData = await detectRes.json() as {
-            predictions?: RoboflowBox[];
-            image?: { width: number; height: number };
-          };
-          const preds = (detectData.predictions ?? [])
-            .sort((a, b) => b.confidence - a.confidence);
-          const best = preds[0];
-          if (best && best.confidence >= 0.3) {
-            fileToAnalyze = await cropByBoundingBox(
-              file,
-              best,
-              detectData.image?.width  ?? 640,
-              detectData.image?.height ?? 640,
-            );
-          }
-          // If no confident detection: fall through — full image sent to Gemini
-        }
-      } catch { /* network error — fall through to full image */ }
+        fileToAnalyze = await cropByBoundingBox(
+          file,
+          detectionResult.box,
+          detectionResult.imgW,
+          detectionResult.imgH,
+        );
+      } catch { /* fallback to full image */ }
     }
 
     try {
@@ -408,39 +460,76 @@ export function ScanClient() {
 
         {/* Viewfinder */}
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
-          <div className="w-64 h-64 rounded-[2rem] relative flex items-center justify-center mb-10">
-            <div className="absolute top-0 left-0 w-9 h-9 border-t-[3px] border-l-[3px] border-on-surface/30 rounded-tl-[2rem]" />
-            <div className="absolute top-0 right-0 w-9 h-9 border-t-[3px] border-r-[3px] border-on-surface/30 rounded-tr-[2rem]" />
-            <div className="absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] border-on-surface/30 rounded-bl-[2rem]" />
-            <div className="absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] border-on-surface/30 rounded-br-[2rem]" />
+          <div className="w-64 h-64 rounded-[2rem] relative overflow-hidden flex items-center justify-center mb-10">
+            {/* Corner brackets (always visible) */}
+            <div className="absolute top-0 left-0 w-9 h-9 border-t-[3px] border-l-[3px] border-on-surface/30 rounded-tl-[2rem] z-20" />
+            <div className="absolute top-0 right-0 w-9 h-9 border-t-[3px] border-r-[3px] border-on-surface/30 rounded-tr-[2rem] z-20" />
+            <div className="absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] border-on-surface/30 rounded-bl-[2rem] z-20" />
+            <div className="absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] border-on-surface/30 rounded-br-[2rem] z-20" />
 
-            {!preview && (
-              <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "2rem" }}>
-                <div className="animate-scan-sweep bg-on-surface/20 shadow-[0_0_8px_rgba(var(--color-on-surface),0.15)]" />
-              </div>
-            )}
+            {preview ? (
+              <>
+                {/* Frozen preview image */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
 
-            {!preview && (
-              <button
-                onClick={() => setCameraOpen(true)}
-                className="flex flex-col items-center gap-3 active:scale-95 transition-transform"
-              >
-                <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center">
-                  <Icon name="photo_camera" filled className="text-on-surface-variant text-3xl" />
+                {/* Detection bbox canvas overlay */}
+                <canvas
+                  ref={boxCanvasRef}
+                  width={256}
+                  height={256}
+                  className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                />
+
+                {/* "Detecting…" spinner */}
+                {detecting && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      <span className="text-white text-[10px] font-medium">Scanning...</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <div className="animate-scan-sweep bg-on-surface/20 shadow-[0_0_8px_rgba(var(--color-on-surface),0.15)]" />
                 </div>
-                <span className="text-on-surface-variant text-xs font-medium">{t.scan.openCamera}</span>
-              </button>
+                <button
+                  onClick={() => setCameraOpen(true)}
+                  className="flex flex-col items-center gap-3 active:scale-95 transition-transform"
+                >
+                  <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center">
+                    <Icon name="photo_camera" filled className="text-on-surface-variant text-3xl" />
+                  </div>
+                  <span className="text-on-surface-variant text-xs font-medium">{t.scan.openCamera}</span>
+                </button>
+              </>
             )}
           </div>
 
+          {/* Status pill */}
           <div className="bg-surface-container/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-ambient">
-            <Icon
-              name={preview ? "check_circle" : "photo_camera"}
-              filled={!!preview}
-              className={`text-sm ${preview ? "text-emerald-400" : "text-on-surface-variant"}`}
-            />
+            {detecting ? (
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+            ) : detectionResult ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+            ) : (
+              <Icon
+                name={preview ? "check_circle" : "photo_camera"}
+                filled={!!preview}
+                className={`text-sm ${preview ? "text-emerald-400" : "text-on-surface-variant"}`}
+              />
+            )}
             <span className="text-sm font-medium">
-              {preview ? t.scan.imageReady : t.scan.holdSteady}
+              {detecting
+                ? "Detecting lesion…"
+                : detectionResult
+                  ? `Detected: ${detectionResult.box.class} ${Math.round(detectionResult.box.confidence * 100)}%`
+                  : preview
+                    ? t.scan.imageReady
+                    : t.scan.holdSteady}
             </span>
           </div>
         </main>
@@ -501,19 +590,21 @@ export function ScanClient() {
                 if (!file && !selectedZone) { setStep("zones"); return; }
                 submit();
               }}
-              disabled={uploading}
+              disabled={uploading || detecting}
               className={`w-[76px] h-[76px] rounded-full p-[5px] active:scale-90 transition-all duration-200 disabled:opacity-60 ${
-                file
+                file && detectionResult
                   ? "bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-[0_0_28px_rgba(52,211,153,0.4)]"
-                  : "bg-primary-gradient shadow-primary-glow"
+                  : file
+                    ? "bg-primary-gradient shadow-primary-glow"
+                    : "bg-primary-gradient shadow-primary-glow"
               }`}
               aria-label={file ? t.scan.analyzePhoto : t.scan.openCamera}
             >
               <div className="w-full h-full rounded-full border-[3.5px] border-white/80 flex items-center justify-center">
-                {uploading ? (
+                {uploading || detecting ? (
                   <span className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
                 ) : file ? (
-                  <Icon name="arrow_upward" className="text-white text-xl" />
+                  <Icon name={detectionResult ? "check" : "arrow_upward"} className="text-white text-xl" />
                 ) : (
                   <Icon name="photo_camera" filled className="text-white text-xl" />
                 )}
