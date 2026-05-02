@@ -256,7 +256,7 @@ export function ScanClient() {
     let fileToAnalyze: File = file;
     if (selectedZone && SMART_CROP_ZONES.has(selectedZone)) {
       try {
-        const detectRes = await fetch("/api/detect", { method: "POST", body: file });
+        const detectRes = await fetch(`/api/detect?zone=${encodeURIComponent(selectedZone ?? "")}`, { method: "POST", body: file });
         if (detectRes.ok) {
           const detectData = await detectRes.json() as {
             predictions?: RoboflowBox[];
@@ -363,6 +363,7 @@ export function ScanClient() {
         <ScanCamera
           onCapture={handleCapture}
           onClose={() => setCameraOpen(false)}
+          bodyArea={selectedZone ?? undefined}
         />
       )}
 

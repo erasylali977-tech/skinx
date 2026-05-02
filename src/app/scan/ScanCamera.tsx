@@ -152,10 +152,11 @@ type PermState = "idle" | "requesting" | "denied" | "granted" | "error";
 interface Props {
   onCapture: (file: File, previewUrl: string) => void;
   onClose: () => void;
+  bodyArea?: string;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function ScanCamera({ onCapture, onClose }: Props) {
+export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
   const { t } = useI18n();
 
   const videoRef      = useRef<HTMLVideoElement>(null);
@@ -228,7 +229,8 @@ export function ScanCamera({ onCapture, onClose }: Props) {
       sampleRef.current.toBlob(async (blob) => {
         if (!blob) return;
         try {
-          const res = await fetch("/api/detect", { method: "POST", body: blob });
+          const zone = bodyArea ?? "";
+          const res = await fetch(`/api/detect?zone=${encodeURIComponent(zone)}`, { method: "POST", body: blob });
           if (!res.ok) return;
           const data = await res.json() as {
             predictions?: RoboflowPrediction[];

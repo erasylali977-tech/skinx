@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Roboflow Universe model — skin-lesion-jxjgm version 7
-const MODEL   = "skin-lesion-jxjgm/7";
+// Roboflow models per body zone
+const MODELS: Record<string, string> = {
+  face:  "beauty-ai-wa8ub/acne-detection-v11/2",
+  arms:  "constanta/skin-disease-get/1",
+};
+const DEFAULT_MODEL = "constanta/skin-disease-get/1";
+
 const KEY     = process.env.ROBOFLOW_API_KEY ?? "";
 const CONF    = 35;  // min confidence %
 const OVERLAP = 30;  // max overlap %
@@ -13,6 +18,9 @@ export async function POST(req: NextRequest) {
   if (!KEY) {
     return NextResponse.json({ predictions: [] });
   }
+
+  const zone  = new URL(req.url).searchParams.get("zone") ?? "";
+  const MODEL = MODELS[zone] ?? DEFAULT_MODEL;
 
   let base64: string;
   try {
