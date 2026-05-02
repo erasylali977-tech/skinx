@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       abcde: analysis.abcde,
       summary: analysis.summary,
       differential_diagnosis: analysis.differentialDiagnosis,
+      lesion_bbox: analysis.lesionBbox ?? null,
     };
 
     let inserted: { id: string } | null = null;
@@ -154,6 +155,14 @@ export async function POST(request: NextRequest) {
     }
     if (error?.message?.includes("differential_diagnosis")) {
       delete insertPayload.differential_diagnosis;
+      ({ data: inserted, error } = await supabase
+        .from("scans")
+        .insert(insertPayload)
+        .select("id")
+        .single());
+    }
+    if (error?.message?.includes("lesion_bbox")) {
+      delete insertPayload.lesion_bbox;
       ({ data: inserted, error } = await supabase
         .from("scans")
         .insert(insertPayload)

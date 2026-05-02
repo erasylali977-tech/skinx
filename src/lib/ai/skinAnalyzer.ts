@@ -16,6 +16,13 @@ export interface AbcdeScores {
   evolution: number;
 }
 
+export interface LesionBbox {
+  x: number; // normalized 0-1, left edge
+  y: number; // normalized 0-1, top edge
+  w: number; // normalized 0-1, width
+  h: number; // normalized 0-1, height
+}
+
 export interface AnalysisResult {
   riskScore: number;   // 0-100 (higher = more concerning)
   riskLevel: RiskLevel;
@@ -24,6 +31,7 @@ export interface AnalysisResult {
   notes: string;       // short clinical note
   summary: string;     // plain-language explanation for the patient
   differentialDiagnosis: DifferentialItem[]; // top 3 diagnoses with probabilities
+  lesionBbox?: LesionBbox; // normalized bounding box of main lesion
 }
 
 export interface SkinAnalyzer {
@@ -141,7 +149,7 @@ Analyze the skin lesion or area visible in the image. It may be a mole, wart (ve
 Apply general dermatology and dermoscopy evaluation criteria.${areaHint}
 Return ONLY a valid JSON object — no markdown fences, no explanation, just raw JSON.
 
-JSON structure (all numbers are integers 0-100):
+JSON structure (all numbers are integers 0-100 EXCEPT lesionBbox which uses decimals 0.0-1.0):
 {
   "riskScore": <overall concern level, integer 0-100>,
   "riskLevel": <"low" | "medium" | "high">,
@@ -152,6 +160,12 @@ JSON structure (all numbers are integers 0-100):
     "color": <0=uniform single color, 100=multiple distinct colors>,
     "diameter": <0=tiny <2mm, 100=large >10mm>,
     "evolution": <0=stable/no visible changes, 100=significant changes observed>
+  },
+  "lesionBbox": {
+    "x": <left edge of main lesion as fraction of image width, 0.0-1.0>,
+    "y": <top edge of main lesion as fraction of image height, 0.0-1.0>,
+    "w": <width of bounding box as fraction of image width, 0.0-1.0>,
+    "h": <height of bounding box as fraction of image height, 0.0-1.0>
   },
   "notes": "<One concise clinical observation sentence in ${lang}>",
   "summary": "<2-3 plain language sentences in ${lang}: what was found, what it likely is, and the recommended next step>",
@@ -167,6 +181,7 @@ Rules:
 - status: "review" when high risk, otherwise "stable"
 - differentialDiagnosis: top 3 most likely skin conditions ordered by probability descending; probabilities must sum to 100
 - Names in differentialDiagnosis MUST be in ${lang}
+- lesionBbox: draw the tightest box around the primary area of concern (mole, rash, lesion). If no clear lesion, use {"x":0.25,"y":0.25,"w":0.5,"h":0.5}
 - Warts/verrucas are typically low risk — score accordingly
 - If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis
@@ -208,7 +223,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
           { inline_data: { mime_type: mimeType ?? "image/jpeg", data: Buffer.from(bytes).toString("base64") } },
         ],
       }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
     });
 
     // Only gemini-2.5-* is available for new API keys. Retry on 503 with backoff.
@@ -244,12 +259,10 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
 
     const raw = parsed as {
       abcde?: Record<string, unknown>;
-      riskScore?: unknown;
-      riskLevel?: unknown;
-      status?: unknown;
-      notes?: unknown;
-      summary?: unknown;
+      riskScore?: unknown; riskLevel?: unknown;
+      status?: unknown; notes?: unknown; summary?: unknown;
       differentialDiagnosis?: unknown[];
+      lesionBbox?: Record<string, unknown>;
     };
 
     const abcde: AbcdeScores = {
@@ -277,14 +290,20 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
         })).filter(it => it.name !== "Unknown")
       : [];
 
+    const rb = raw.lesionBbox;
+    const lesionBbox: LesionBbox | undefined = rb &&
+      typeof rb.x === "number" && typeof rb.y === "number" &&
+      typeof rb.w === "number" && typeof rb.h === "number"
+      ? { x: Math.max(0, Math.min(1, rb.x)), y: Math.max(0, Math.min(1, rb.y)),
+          w: Math.max(0.05, Math.min(1, rb.w)), h: Math.max(0.05, Math.min(1, rb.h)) }
+      : undefined;
+
     return {
-      riskScore,
-      riskLevel,
-      status,
-      abcde,
+      riskScore, riskLevel, status, abcde,
       notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
       summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
       differentialDiagnosis,
+      lesionBbox,
     };
   }
 }
@@ -356,6 +375,7 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
       riskScore?: unknown; riskLevel?: unknown;
       status?: unknown; notes?: unknown; summary?: unknown;
       differentialDiagnosis?: unknown[];
+      lesionBbox?: Record<string, unknown>;
     };
 
     const abcde: AbcdeScores = {
@@ -382,11 +402,20 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
         })).filter(it => it.name !== "Unknown")
       : [];
 
+    const rb = raw.lesionBbox;
+    const lesionBbox: LesionBbox | undefined = rb &&
+      typeof rb.x === "number" && typeof rb.y === "number" &&
+      typeof rb.w === "number" && typeof rb.h === "number"
+      ? { x: Math.max(0, Math.min(1, rb.x)), y: Math.max(0, Math.min(1, rb.y)),
+          w: Math.max(0.05, Math.min(1, rb.w)), h: Math.max(0.05, Math.min(1, rb.h)) }
+      : undefined;
+
     return {
       riskScore, riskLevel, status, abcde,
       notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
       summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
       differentialDiagnosis,
+      lesionBbox,
     };
   }
 }

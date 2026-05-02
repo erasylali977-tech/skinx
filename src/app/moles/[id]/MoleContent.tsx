@@ -98,8 +98,8 @@ function generateHeatmapUrl(img: HTMLImageElement): string {
   return c.toDataURL("image/jpeg", 0.88);
 }
 
-// AI detection overlay: bbox around top anomaly cluster + diagnosis label
-function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string): string {
+// AI detection overlay: uses Gemini bbox when available, else heuristic anomaly cluster
+function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string, bbox?: { x: number; y: number; w: number; h: number } | null): string {
   const MAX = 400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
   const W = Math.max(1, Math.round((img.naturalWidth  || MAX) * scale));
@@ -117,23 +117,31 @@ function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string): string {
     anom[i] = Math.sqrt(dr*dr + dg*dg + db*db);
   }
 
-  // Bounding box of top 12% anomalous pixels
-  const sorted = Float32Array.from(anom).sort();
-  const thresh = sorted[Math.floor(sorted.length * 0.88)];
-  let x0 = W, x1 = 0, y0 = H, y1 = 0, found = false;
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++)
-      if (anom[y * W + x] >= thresh) {
-        if (x < x0) x0 = x; if (x > x1) x1 = x;
-        if (y < y0) y0 = y; if (y > y1) y1 = y;
-        found = true;
-      }
+  let bx: number, by: number, bw: number, bh: number;
 
-  if (!found) { ctx.putImageData(id, 0, 0); return c.toDataURL("image/jpeg", 0.88); }
-
-  const pad = Math.round(Math.min(W, H) * 0.05);
-  const bx = Math.max(0, x0 - pad), by = Math.max(0, y0 - pad);
-  const bw = Math.min(W - bx, x1 - x0 + pad * 2), bh = Math.min(H - by, y1 - y0 + pad * 2);
+  if (bbox) {
+    // Real Gemini bbox (normalized 0-1 → pixel coords)
+    bx = Math.max(0, Math.round(bbox.x * W));
+    by = Math.max(0, Math.round(bbox.y * H));
+    bw = Math.min(W - bx, Math.max(8, Math.round(bbox.w * W)));
+    bh = Math.min(H - by, Math.max(8, Math.round(bbox.h * H)));
+  } else {
+    // Heuristic fallback: bounding box of top 12% anomalous pixels
+    const sorted = Float32Array.from(anom).sort();
+    const thresh = sorted[Math.floor(sorted.length * 0.88)];
+    let x0 = W, x1 = 0, y0 = H, y1 = 0, found = false;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++)
+        if (anom[y * W + x] >= thresh) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+          found = true;
+        }
+    if (!found) { ctx.putImageData(id, 0, 0); return c.toDataURL("image/jpeg", 0.88); }
+    const pad = Math.round(Math.min(W, H) * 0.05);
+    bx = Math.max(0, x0 - pad); by = Math.max(0, y0 - pad);
+    bw = Math.min(W - bx, x1 - x0 + pad * 2); bh = Math.min(H - by, y1 - y0 + pad * 2);
+  }
 
   // Dim outside bbox
   for (let y = 0; y < H; y++)
@@ -246,7 +254,7 @@ function SemicircleGauge({ score, level }: { score: number; level: "low" | "medi
 
 // ── Hero Carousel: Original → Heatmap → Segmentation ────────────────────────
 function HeroCarousel({
-  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date, primaryDx,
+  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date, primaryDx, lesionBbox,
 }: {
   imageUrl: string | null;
   riskBadge: string;
@@ -254,6 +262,7 @@ function HeroCarousel({
   zoneLabel: string;
   date: string;
   primaryDx?: string;
+  lesionBbox?: { x: number; y: number; w: number; h: number } | null;
 }) {
   const { t } = useI18n();
   const [slide, setSlide] = useState(0);
@@ -267,10 +276,10 @@ function HeroCarousel({
     img.crossOrigin = "anonymous";
     img.onload = () => {
       setHeatUrl(generateHeatmapUrl(img));
-      setSegUrl(generateSegmentUrl(img, primaryDx));
+      setSegUrl(generateSegmentUrl(img, primaryDx, lesionBbox));
     };
     img.src = imageUrl;
-  }, [imageUrl, primaryDx]);
+  }, [imageUrl, primaryDx, lesionBbox]);
 
   const slides = [
     { url: imageUrl, badge: "ОРИГИНАЛ" },
@@ -451,6 +460,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           zoneLabel={getZoneDisplayLabel(scan.body_area, locale) || t.moles.skinCheck}
           date={formatDate(scan.created_at)}
           primaryDx={scan.differential_diagnosis?.[0]?.name}
+          lesionBbox={scan.lesion_bbox}
         />
 
         <div className="px-4 space-y-4">
