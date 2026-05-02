@@ -76,8 +76,23 @@ interface RoboflowPrediction {
 }
 
 const CLASS_LABELS: Record<string, string> = {
+  // skin-disease-get classes
+  acne:            "Acne",
+  eczema:          "Eczema",
+  psoriasis:       "Psoriasis",
+  dermatitis:      "Dermatitis",
+  rosacea:         "Rosacea",
+  melanoma:        "Melanoma",
+  // acne-detection classes
+  comedone:        "Comedone",
+  papule:          "Papule",
+  pustule:         "Pustule",
+  nodule:          "Nodule",
+  whitehead:       "Whitehead",
+  blackhead:       "Blackhead",
+  // legacy dermoscopy fallbacks
   akiec: "Actinic Keratosis",
-  bcc:   "Basal Cell Carcinoma",
+  bcc:   "Basal Cell Ca.",
   bkl:   "Benign Lesion",
   df:    "Dermatofibroma",
   mel:   "Melanoma",
@@ -103,7 +118,7 @@ function drawPredictions(
   const pulse = 0.75 + 0.25 * Math.abs(Math.sin(t / 700));
 
   for (const p of preds) {
-    if (p.confidence < 0.3) continue;
+    if (p.confidence < 0.20) continue;
     const x = (p.x - p.width  / 2) * sx;
     const y = (p.y - p.height / 2) * sy;
     const w = p.width  * sx;
@@ -224,9 +239,28 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
     if (perm !== "granted") return;
 
     // Fire-and-forget Roboflow inference call
+    // Sends a 640×640 center crop from the live video for accurate detection
     const doDetect = () => {
-      if (!sampleRef.current || !aiCameraOnRef.current) return;
-      sampleRef.current.toBlob(async (blob) => {
+      if (!videoRef.current || !aiCameraOnRef.current) return;
+      const video = videoRef.current;
+      if (video.readyState < 2) return;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return;
+
+      const DS = 640;
+      const tmp = document.createElement("canvas");
+      tmp.width  = DS;
+      tmp.height = DS;
+      const tctx = tmp.getContext("2d");
+      if (!tctx) return;
+      const sx = Math.max(0, (vw - DS) >> 1);
+      const sy = Math.max(0, (vh - DS) >> 1);
+      const sw = Math.min(DS, vw);
+      const sh = Math.min(DS, vh);
+      tctx.drawImage(video, sx, sy, sw, sh, 0, 0, DS, DS);
+
+      tmp.toBlob(async (blob) => {
         if (!blob) return;
         try {
           const zone = bodyArea ?? "";
@@ -236,12 +270,12 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
             predictions?: RoboflowPrediction[];
             image?: { width: number; height: number };
           };
-          imgDimsRef.current = { w: data.image?.width ?? 200, h: data.image?.height ?? 200 };
+          imgDimsRef.current = { w: data.image?.width ?? DS, h: data.image?.height ?? DS };
           const preds = data.predictions ?? [];
           predictRef.current = preds;
-          setLesionDetected(preds.some((p) => p.confidence >= 0.35));
+          setLesionDetected(preds.some((p) => p.confidence >= 0.20));
         } catch { /* network error — keep last predictions */ }
-      }, "image/jpeg", 0.85);
+      }, "image/jpeg", 0.90);
     };
 
     let last        = 0;
@@ -271,7 +305,8 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [perm]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perm, bodyArea]);
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────
   useEffect(() => () => {
