@@ -67,100 +67,6 @@ function analyzeFrame(
   };
 }
 
-// ── Roboflow prediction type ───────────────────────────────────────────────
-interface RoboflowPrediction {
-  x: number; y: number;         // center of bounding box
-  width: number; height: number;
-  confidence: number;           // 0–1
-  class: string;
-}
-
-const CLASS_LABELS: Record<string, string> = {
-  // skin-disease-get classes
-  acne:            "Acne",
-  eczema:          "Eczema",
-  psoriasis:       "Psoriasis",
-  dermatitis:      "Dermatitis",
-  rosacea:         "Rosacea",
-  melanoma:        "Melanoma",
-  // acne-detection classes
-  comedone:        "Comedone",
-  papule:          "Papule",
-  pustule:         "Pustule",
-  nodule:          "Nodule",
-  whitehead:       "Whitehead",
-  blackhead:       "Blackhead",
-  // legacy dermoscopy fallbacks
-  akiec: "Actinic Keratosis",
-  bcc:   "Basal Cell Ca.",
-  bkl:   "Benign Lesion",
-  df:    "Dermatofibroma",
-  mel:   "Melanoma",
-  nv:    "Nevi",
-  vasc:  "Vascular",
-};
-
-// ── Draw Roboflow bounding boxes on the overlay canvas ────────────────────
-function drawPredictions(
-  canvas: HTMLCanvasElement,
-  preds: RoboflowPrediction[],
-  imgW: number,
-  imgH: number,
-  t: number
-): void {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!preds.length) return;
-
-  const sx    = canvas.width  / imgW;
-  const sy    = canvas.height / imgH;
-  const pulse = 0.75 + 0.25 * Math.abs(Math.sin(t / 700));
-
-  for (const p of preds) {
-    if (p.confidence < 0.20) continue;
-    const x = (p.x - p.width  / 2) * sx;
-    const y = (p.y - p.height / 2) * sy;
-    const w = p.width  * sx;
-    const h = p.height * sy;
-
-    // Outer glow
-    ctx.shadowColor = "rgba(77,157,255,0.55)";
-    ctx.shadowBlur  = 14;
-    ctx.strokeStyle = `rgba(77,157,255,${(pulse * 0.4).toFixed(2)})`;
-    ctx.lineWidth   = 6;
-    ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
-
-    // Main box
-    ctx.shadowBlur  = 0;
-    ctx.strokeStyle = `rgba(77,157,255,${pulse.toFixed(2)})`;
-    ctx.lineWidth   = 2;
-    ctx.strokeRect(x, y, w, h);
-
-    // Corner ticks
-    const tc = 10;
-    ctx.strokeStyle = "rgba(255,255,255,0.92)";
-    ctx.lineWidth   = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(x,          y + tc); ctx.lineTo(x,      y    ); ctx.lineTo(x + tc,     y    );
-    ctx.moveTo(x + w - tc, y    ); ctx.lineTo(x + w,  y    ); ctx.lineTo(x + w,      y + tc);
-    ctx.moveTo(x,      y + h - tc); ctx.lineTo(x,      y + h); ctx.lineTo(x + tc,    y + h );
-    ctx.moveTo(x + w - tc, y + h); ctx.lineTo(x + w,  y + h); ctx.lineTo(x + w, y + h - tc);
-    ctx.stroke();
-
-    // Label pill
-    const label = `${CLASS_LABELS[p.class] ?? p.class}  ${Math.round(p.confidence * 100)}%`;
-    ctx.font = "bold 11px system-ui, sans-serif";
-    const tw = ctx.measureText(label).width + 10;
-    ctx.fillStyle = `rgba(61,122,237,${(pulse * 0.9).toFixed(2)})`;
-    ctx.beginPath();
-    ctx.roundRect(x, y - 20, tw, 18, 4);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, x + 5, y - 6);
-  }
-}
-
 // ── Types ──────────────────────────────────────────────────────────────────
 type PermState = "idle" | "requesting" | "denied" | "granted" | "error";
 
@@ -171,26 +77,20 @@ interface Props {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
+export function ScanCamera({ onCapture, onClose }: Props) {
   const { t } = useI18n();
 
-  const videoRef      = useRef<HTMLVideoElement>(null);
-  const sampleRef     = useRef<HTMLCanvasElement>(null);
-  const captureRef    = useRef<HTMLCanvasElement>(null);
-  const overlayRef    = useRef<HTMLCanvasElement>(null);
-  const streamRef     = useRef<MediaStream | null>(null);
-  const rafRef        = useRef<number>(0);
-  const predictRef    = useRef<RoboflowPrediction[]>([]);
-  const imgDimsRef    = useRef({ w: 200, h: 200 });
-  const aiCameraOnRef = useRef(true);
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const sampleRef  = useRef<HTMLCanvasElement>(null);
+  const captureRef = useRef<HTMLCanvasElement>(null);
+  const streamRef  = useRef<MediaStream | null>(null);
+  const rafRef     = useRef<number>(0);
 
-  const [perm,           setPerm]          = useState<PermState>("idle");
-  const [facing,         setFacing]        = useState<"environment" | "user">("environment");
-  const [det,            setDet]           = useState({ skinPct: 0, brightness: 128, sharpness: 50 });
-  const [aiCameraOn,     setAiCameraOn]    = useState(true);
-  const [zoom,           setZoom]          = useState(1);
-  const [torch,          setTorch]         = useState(false);
-  const [lesionDetected, setLesionDetected] = useState(false);
+  const [perm,   setPerm]  = useState<PermState>("idle");
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [det,    setDet]    = useState({ skinPct: 0, brightness: 128, sharpness: 50 });
+  const [zoom,   setZoom]   = useState(1);
+  const [torch,  setTorch]  = useState(false);
 
   // ── Open camera stream ─────────────────────────────────────────────────
   // NOTE: we set perm("granted") BEFORE touching videoRef, because the
@@ -231,82 +131,22 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
     video.play().catch(() => {});
   }, [perm]);
 
-  // ── Keep aiCameraOnRef in sync with state ─────────────────────────────
-  useEffect(() => { aiCameraOnRef.current = aiCameraOn; }, [aiCameraOn]);
-
-  // ── Detection + overlay loop ───────────────────────────────────────────
+  // ── Skin-quality analysis loop (no Roboflow — detection happens after capture) ─
   useEffect(() => {
     if (perm !== "granted") return;
-
-    // Fire-and-forget Roboflow inference call
-    // Sends a 640×640 center crop from the live video for accurate detection
-    const doDetect = () => {
-      if (!videoRef.current || !aiCameraOnRef.current) return;
-      const video = videoRef.current;
-      if (video.readyState < 2) return;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) return;
-
-      const DS = 640;
-      const tmp = document.createElement("canvas");
-      tmp.width  = DS;
-      tmp.height = DS;
-      const tctx = tmp.getContext("2d");
-      if (!tctx) return;
-      const sx = Math.max(0, (vw - DS) >> 1);
-      const sy = Math.max(0, (vh - DS) >> 1);
-      const sw = Math.min(DS, vw);
-      const sh = Math.min(DS, vh);
-      tctx.drawImage(video, sx, sy, sw, sh, 0, 0, DS, DS);
-
-      tmp.toBlob(async (blob) => {
-        if (!blob) return;
-        try {
-          const zone = bodyArea ?? "";
-          const res = await fetch(`/api/detect?zone=${encodeURIComponent(zone)}`, { method: "POST", body: blob });
-          if (!res.ok) return;
-          const data = await res.json() as {
-            predictions?: RoboflowPrediction[];
-            image?: { width: number; height: number };
-          };
-          imgDimsRef.current = { w: data.image?.width ?? DS, h: data.image?.height ?? DS };
-          const preds = data.predictions ?? [];
-          predictRef.current = preds;
-          setLesionDetected(preds.some((p) => p.confidence >= 0.20));
-        } catch { /* network error — keep last predictions */ }
-      }, "image/jpeg", 0.90);
-    };
-
-    let last        = 0;
-    let lastDetect  = -9999;
-
+    let last = 0;
     const loop = (now: number) => {
       rafRef.current = requestAnimationFrame(loop);
-
-      // Overlay drawn every frame for smooth pulse animation
-      if (overlayRef.current) {
-        drawPredictions(overlayRef.current, predictRef.current, imgDimsRef.current.w, imgDimsRef.current.h, now);
-      }
-
-      // Skin analysis every 150 ms
       if (now - last >= 150) {
         last = now;
         if (videoRef.current && sampleRef.current) {
           setDet(analyzeFrame(videoRef.current, sampleRef.current));
         }
       }
-
-      // Roboflow detect every 1 200 ms
-      if (now - lastDetect >= 1200) {
-        lastDetect = now;
-        doDetect();
-      }
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perm, bodyArea]);
+  }, [perm]);
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────
   useEffect(() => () => {
@@ -356,27 +196,19 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
   const skinOk    = det.skinPct    > 15;
   const ready     = skinOk && !isBlurry && !isDark && !isBright;
 
-  const aiLesionActive = aiCameraOn && lesionDetected;
-
-  const topPred    = predictRef.current[0];
   const statusText =
-    aiLesionActive
-      ? (topPred
-          ? `${CLASS_LABELS[topPred.class] ?? topPred.class} · ${Math.round(topPred.confidence * 100)}%`
-          : "Изменение обнаружено")
-      : isDark   ? t.scan.tooDark
-      : isBright ? t.scan.tooBright
-      : isBlurry ? t.scan.blurry
-      : skinOk   ? t.scan.skinDetected
-      :            t.scan.alignSkin;
+    isDark   ? t.scan.tooDark
+    : isBright ? t.scan.tooBright
+    : isBlurry ? t.scan.blurry
+    : skinOk   ? t.scan.skinDetected
+    :            t.scan.alignSkin;
 
-  const statusColor =
-    aiLesionActive ? "text-primary" :
-    ready ? "text-primary/80" :
-    (isDark || isBright || isBlurry) ? "text-amber-400" :
-    "text-white/70";
+  const statusColor = ready
+    ? "text-primary/80"
+    : (isDark || isBright || isBlurry) ? "text-amber-400"
+    : "text-white/70";
 
-  const frameColor = aiLesionActive ? "border-primary" : ready ? "border-primary/60" : "border-white/25";
+  const frameColor = ready ? "border-primary/60" : "border-white/25";
 
   const shutterStyle = ready
     ? "bg-primary-gradient shadow-primary-glow ring-2 ring-primary/30"
@@ -536,20 +368,11 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
           <div className={`absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] ${frameColor} rounded-bl-[2rem] transition-colors duration-500`} />
           <div className={`absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] ${frameColor} rounded-br-[2rem] transition-colors duration-500`} />
 
-          {/* Roboflow bounding-box overlay canvas */}
-          <canvas
-            ref={overlayRef}
-            width={256}
-            height={256}
-            className="absolute inset-0 w-full h-full pointer-events-none z-10"
-          />
         </div>
 
         {/* Status badge */}
         <div className="flex items-center gap-2.5 bg-black/55 backdrop-blur-md px-5 py-2.5 rounded-full">
-          {aiLesionActive ? (
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
-          ) : ready ? (
+          {ready ? (
             <span className="w-2 h-2 rounded-full bg-primary/50 animate-pulse flex-shrink-0" />
           ) : (
             <span className="w-2 h-2 rounded-full bg-white/30 flex-shrink-0" />
@@ -645,24 +468,6 @@ export function ScanCamera({ onCapture, onClose, bodyArea }: Props) {
           <Icon name="zoom_in" className="text-white/40 text-base flex-shrink-0" />
         </div>
 
-        {/* AI Camera toggle row */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="flex items-center gap-2">
-            <Icon name="smart_toy" className="text-white/50 text-base" />
-            <span className="text-white/60 text-xs font-medium">AI Камера</span>
-          </div>
-          <button
-            onClick={() => setAiCameraOn(prev => !prev)}
-            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-              aiCameraOn ? "bg-primary" : "bg-white/20"
-            }`}
-            aria-label="Toggle AI Camera"
-          >
-            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
-              aiCameraOn ? "left-6" : "left-1"
-            }`} />
-          </button>
-        </div>
       </div>
 
       {/* Hidden canvases for analysis & capture */}
