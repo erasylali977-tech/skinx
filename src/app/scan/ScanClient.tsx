@@ -381,27 +381,35 @@ export function ScanClient() {
               <Icon name="close" />
             </Link>
 
-            {/* Segmented gender toggle */}
-            <div className="flex bg-surface-container rounded-2xl p-1 gap-0.5">
+            {/* Gender toggle */}
+            <div className="flex bg-surface-container rounded-2xl p-1 gap-1">
               <button
                 onClick={() => changeGender("male")}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
                   gender === "male"
-                    ? "bg-background text-on-surface shadow-sm"
+                    ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
                     : "text-on-surface-variant"
                 }`}
               >
-                {locale === "ru" ? "Мужской" : locale === "kk" ? "Ер" : "Male"}
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <circle cx="5" cy="8" r="4" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M8.5 4.5L12 1M12 1H9M12 1V4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {locale === "ru" ? "Муж" : locale === "kk" ? "Ер" : "Male"}
               </button>
               <button
                 onClick={() => changeGender("female")}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
                   gender === "female"
-                    ? "bg-background text-on-surface shadow-sm"
+                    ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
                     : "text-on-surface-variant"
                 }`}
               >
-                {locale === "ru" ? "Женский" : locale === "kk" ? "Әйел" : "Female"}
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <circle cx="6.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M6.5 9.5V12.5M4.5 11h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+                {locale === "ru" ? "Жен" : locale === "kk" ? "Әйел" : "Female"}
               </button>
             </div>
           </div>

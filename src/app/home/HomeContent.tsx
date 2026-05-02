@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { BottomNav } from "@/components/BottomNav";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
-import { AppHeader } from "@/components/AppHeader";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDateTime } from "@/lib/utils";
 import { getZoneDisplayLabel } from "@/lib/zoneDetails";
@@ -17,105 +17,159 @@ type Props = {
 };
 
 const RISK_COLORS = {
-  low:    { bg: "bg-emerald-500/15", text: "text-emerald-500", dot: "bg-emerald-500" },
-  medium: { bg: "bg-amber-400/15",   text: "text-amber-500",   dot: "bg-amber-400"  },
-  high:   { bg: "bg-red-500/15",     text: "text-red-500",     dot: "bg-red-500"    },
+  low:    { bg: "bg-emerald-500/15", text: "text-emerald-500", dot: "bg-emerald-500",  label: { ru: "Низкий",   en: "Low",    kk: "Төмен" } },
+  medium: { bg: "bg-amber-400/15",   text: "text-amber-500",   dot: "bg-amber-400",   label: { ru: "Средний",  en: "Medium", kk: "Орта" } },
+  high:   { bg: "bg-red-500/15",     text: "text-red-500",     dot: "bg-red-500",     label: { ru: "Высокий",  en: "High",   kk: "Жоғары" } },
 };
 
 export function HomeContent({ firstName, scans, thumbs }: Props) {
   const { t, locale } = useI18n();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const lastScan   = scans[0];
+  const totalScans = scans.length;
+  const lastRC     = lastScan ? RISK_COLORS[lastScan.risk_level] : null;
 
   return (
     <div className="min-h-screen bg-background text-on-surface pb-28">
       <DisclaimerModal />
-      <AppHeader />
 
-      <main className="pt-20 max-w-md mx-auto md:max-w-4xl">
+      {/* ── Slim top bar ── */}
+      <header className="fixed top-0 left-0 w-full z-40 bg-background/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-5 py-3 max-w-md mx-auto">
+          <div className="flex items-center gap-2">
+            <Icon name="spa" filled className="text-primary text-xl" />
+            <span className="font-black text-base tracking-tight">SkinX</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {mounted && (
+              <button
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center"
+              >
+                <Icon name={resolvedTheme === "dark" ? "light_mode" : "dark_mode"} className="text-on-surface-variant text-[18px]" />
+              </button>
+            )}
+            <Link href="/account" className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center">
+              <Icon name="person" className="text-on-surface-variant text-[18px]" />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="pt-14 max-w-md mx-auto md:max-w-4xl">
 
         {/* ── Greeting ── */}
-        <section className="px-6 pt-6 pb-8">
-          <p className="text-on-surface-variant text-sm font-medium mb-1 uppercase tracking-widest">
-            SkinX
+        <section className="px-5 pt-6 pb-5">
+          <p className="text-on-surface-variant text-[13px] font-medium mb-0.5">
+            {t.home.greeting}
           </p>
-          <h1 className="text-[34px] leading-[1.1] font-black tracking-tight">
-            {t.home.greeting},<br />{firstName}
+          <h1 className="text-[30px] leading-[1.1] font-black tracking-tight">
+            {firstName} 👋
           </h1>
-          <p className="text-on-surface-variant mt-2 text-base">
-            {t.home.subtitle}
-          </p>
         </section>
 
-        {/* ── Hero CTA ── */}
-        <section className="px-4 mb-10">
+        {/* ── PRIMARY SCAN CARD ── */}
+        <section className="px-4 mb-4">
           <Link
             href="/scan"
-            className="relative w-full rounded-[28px] overflow-hidden flex flex-col justify-end min-h-[240px] active:scale-[0.98] transition-transform duration-200"
-            style={{ boxShadow: "0 20px 60px rgba(61,122,237,0.25), 0 4px 20px rgba(0,0,0,0.15)" }}
+            className="relative w-full rounded-[28px] overflow-hidden flex flex-col justify-between active:scale-[0.98] transition-transform duration-200"
+            style={{
+              background: "linear-gradient(135deg, #3d7aed 0%, #5b54f0 50%, #7c3aed 100%)",
+              boxShadow: "0 16px 48px rgba(61,122,237,0.35), 0 4px 16px rgba(0,0,0,0.12)",
+              minHeight: "220px",
+            }}
           >
-            <Image
-              src="/scan-hero.jpeg"
-              alt="Skin scanning"
-              fill
-              className="object-cover object-center"
-              priority
-            />
-            {/* Gradient layers */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent" />
+            {/* Decorative blobs */}
+            <div className="absolute top-[-30px] right-[-30px] w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+            <div className="absolute bottom-[-20px] left-[-20px] w-36 h-36 rounded-full bg-white/8 blur-2xl" />
 
-            {/* Top badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-white text-[11px] font-semibold tracking-wide uppercase">AI Ready</span>
+            {/* Top row */}
+            <div className="relative z-10 flex items-start justify-between px-6 pt-6">
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                <span className="text-white text-[11px] font-semibold tracking-wider uppercase">Gemini AI</span>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center">
+                <Icon name="biotech" className="text-white text-xl" />
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="relative z-10 px-6 pb-6">
-              <h2 className="text-white text-2xl font-black leading-tight tracking-tight mb-1.5">
+            {/* Bottom content */}
+            <div className="relative z-10 px-6 pb-6 mt-6">
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
                 {t.home.heroTitle}
-              </h2>
-              <p className="text-white/65 text-sm leading-relaxed mb-5 max-w-[260px]">
+              </p>
+              <p className="text-white text-[22px] font-black leading-tight tracking-tight mb-5">
                 {t.home.heroSubtitle}
               </p>
 
-              {/* CTA button row */}
+              {/* CTA row */}
               <div className="flex items-center gap-3">
-                <div className="flex-1 flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-2xl px-4 py-3">
-                  <Icon name="my_location" className="text-white text-base flex-shrink-0" />
+                <div className="flex-1 bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-2">
+                  <Icon name="my_location" className="text-white/80 text-sm flex-shrink-0" />
                   <span className="text-white text-sm font-semibold">{t.home.selectZoneBtn}</span>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
-                  <Icon name="arrow_forward" className="text-white text-base" />
+                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center flex-shrink-0">
+                  <Icon name="arrow_forward" className="text-primary text-base" />
                 </div>
               </div>
             </div>
           </Link>
         </section>
 
+        {/* ── Stats chips row (only if scans exist) ── */}
+        {totalScans > 0 && lastScan && lastRC && (
+          <section className="px-4 mb-6">
+            <div className="grid grid-cols-3 gap-2.5">
+              {/* Total */}
+              <div className="bg-surface-container rounded-2xl px-3 py-3 flex flex-col gap-1">
+                <span className="text-on-surface-variant text-[10px] font-semibold uppercase tracking-wide">
+                  {locale === "ru" ? "Сканов" : locale === "kk" ? "Скан" : "Scans"}
+                </span>
+                <span className="text-on-surface text-xl font-black">{totalScans}</span>
+              </div>
+              {/* Last date */}
+              <div className="bg-surface-container rounded-2xl px-3 py-3 flex flex-col gap-1">
+                <span className="text-on-surface-variant text-[10px] font-semibold uppercase tracking-wide">
+                  {locale === "ru" ? "Последний" : locale === "kk" ? "Соңғы" : "Last"}
+                </span>
+                <span className="text-on-surface text-xs font-bold leading-tight mt-0.5">
+                  {formatDateTime(lastScan.created_at)}
+                </span>
+              </div>
+              {/* Risk */}
+              <div className={`rounded-2xl px-3 py-3 flex flex-col gap-1 ${lastRC.bg}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${lastRC.text}`}>
+                  {locale === "ru" ? "Риск" : locale === "kk" ? "Қауіп" : "Risk"}
+                </span>
+                <span className={`text-sm font-black ${lastRC.text}`}>
+                  {lastRC.label[locale as "ru" | "en" | "kk"]}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── Recent Scans ── */}
         <section className="px-4">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-xl font-black tracking-tight">{t.home.recentScans}</h2>
-            <Link
-              href="/moles"
-              className="text-primary font-semibold text-sm flex items-center gap-1"
-            >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-[17px] font-black tracking-tight">{t.home.recentScans}</h2>
+            <Link href="/moles" className="text-primary font-semibold text-sm flex items-center gap-0.5">
               {t.common.seeAll}
               <Icon name="chevron_right" className="text-sm" />
             </Link>
           </div>
 
           {scans.length === 0 ? (
-            <div className="bg-surface-container rounded-3xl p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center mx-auto mb-4">
-                <Icon name="image_search" className="text-3xl text-outline-variant" />
+            <div className="bg-surface-container rounded-3xl p-7 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center mx-auto mb-3">
+                <Icon name="image_search" className="text-2xl text-outline-variant" />
               </div>
-              <h3 className="font-bold text-on-surface text-base mb-1">
-                {t.home.noScans}
-              </h3>
-              <p className="text-on-surface-variant text-sm">
-                {t.home.noScansHint}
-              </p>
+              <h3 className="font-bold text-on-surface text-sm mb-1">{t.home.noScans}</h3>
+              <p className="text-on-surface-variant text-xs">{t.home.noScansHint}</p>
             </div>
           ) : (
             <div className="flex overflow-x-auto gap-3 pb-4 hide-scrollbar -mx-4 px-4 snap-x">
@@ -125,11 +179,9 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                   <Link
                     key={s.id}
                     href={`/moles/${s.id}`}
-                    className="min-w-[220px] bg-surface-container rounded-3xl overflow-hidden snap-center active:scale-[0.97] transition-transform duration-150 flex flex-col"
-                    style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+                    className="min-w-[200px] bg-surface-container rounded-3xl overflow-hidden snap-center active:scale-[0.97] transition-transform duration-150 flex flex-col"
                   >
-                    {/* Photo */}
-                    <div className="relative w-full h-[140px] bg-surface-container-high">
+                    <div className="relative w-full h-[120px] bg-surface-container-high">
                       {thumbs[i] ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -139,24 +191,19 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Icon name="image" className="text-4xl text-outline-variant" />
+                          <Icon name="image" className="text-3xl text-outline-variant" />
                         </div>
                       )}
-                      {/* Risk pill */}
-                      <div className={`absolute top-3 right-3 flex items-center gap-1.5 ${rc.bg} backdrop-blur-sm px-2.5 py-1 rounded-full`}>
+                      <div className={`absolute top-2.5 right-2.5 flex items-center gap-1 ${rc.bg} backdrop-blur-sm px-2 py-0.5 rounded-full`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${rc.dot}`} />
-                        <span className={`text-[10px] font-bold uppercase tracking-wide ${rc.text}`}>
-                          {s.risk_score}
-                        </span>
+                        <span className={`text-[10px] font-bold ${rc.text}`}>{s.risk_score}</span>
                       </div>
                     </div>
-
-                    {/* Info */}
-                    <div className="px-4 py-3 flex flex-col gap-1">
-                      <p className="font-bold text-on-surface text-sm leading-tight">
+                    <div className="px-3 py-2.5">
+                      <p className="font-bold text-on-surface text-xs leading-tight">
                         {getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
                       </p>
-                      <p className="text-on-surface-variant text-xs">
+                      <p className="text-on-surface-variant text-[10px] mt-0.5">
                         {formatDateTime(s.created_at)}
                       </p>
                     </div>
