@@ -19,6 +19,33 @@ function nextScanDate(createdAt: string, level: "low" | "medium" | "high", local
 
 // ── Canvas helpers (client-side, results page) ──────────────────────────────────
 
+// YCbCr skin detection (Kovac et al.) — filters out background, clothing, etc.
+function isSkin(r: number, g: number, b: number): boolean {
+  const cb = -0.169 * r - 0.331 * g + 0.500 * b + 128;
+  const cr =  0.500 * r - 0.419 * g - 0.081 * b + 128;
+  return cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173;
+}
+
+// Skin mean via YCbCr-detected pixels; falls back to center crop
+function skinMean(px: Uint8ClampedArray, W: number, H: number): [number, number, number] {
+  let rS = 0, gS = 0, bS = 0, ns = 0;
+  for (let i = 0; i < W * H; i++) {
+    const r = px[i*4], g = px[i*4+1], b = px[i*4+2];
+    if (isSkin(r, g, b)) { rS += r; gS += g; bS += b; ns++; }
+  }
+  if (ns > W * H * 0.05) return [rS / ns, gS / ns, bS / ns];
+  const sr = Math.floor(Math.min(W, H) * 0.15);
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  let rF = 0, gF = 0, bF = 0, n = 0;
+  for (let y = cy - sr; y <= cy + sr; y++)
+    for (let x = cx - sr; x <= cx + sr; x++) {
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      const i = (y * W + x) * 4;
+      rF += px[i]; gF += px[i+1]; bF += px[i+2]; n++;
+    }
+  return n > 0 ? [rF / n, gF / n, bF / n] : [128, 100, 90];
+}
+
 // Green = healthy skin, Yellow/Orange = deviation, Red = high anomaly
 function skinThermalColor(t: number): [number, number, number] {
   const v = Math.max(0, Math.min(1, t));
@@ -51,20 +78,7 @@ function boxBlur(src: Float32Array, W: number, H: number, r: number): Float32Arr
   return out;
 }
 
-function getSkinMedian(px: Uint8ClampedArray, W: number, H: number): [number, number, number] {
-  const sr = Math.floor(Math.min(W, H) * 0.15);
-  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
-  let rS = 0, gS = 0, bS = 0, n = 0;
-  for (let y = cy - sr; y <= cy + sr; y++)
-    for (let x = cx - sr; x <= cx + sr; x++) {
-      if (x < 0 || x >= W || y < 0 || y >= H) continue;
-      const i = (y * W + x) * 4;
-      rS += px[i]; gS += px[i+1]; bS += px[i+2]; n++;
-    }
-  return n > 0 ? [rS/n, gS/n, bS/n] : [128, 100, 90];
-}
-
-// Skin-anomaly thermal: chromatic deviation from median → green→orange→red
+// Skin-anomaly thermal: YCbCr mask → skin only → chromatic deviation → green→red
 function generateHeatmapUrl(img: HTMLImageElement): string {
   const MAX = 400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
@@ -75,7 +89,7 @@ function generateHeatmapUrl(img: HTMLImageElement): string {
   ctx.drawImage(img, 0, 0, W, H);
   const id = ctx.getImageData(0, 0, W, H);
   const px = id.data;
-  const [mr, mg, mb] = getSkinMedian(px, W, H);
+  const [mr, mg, mb] = skinMean(px, W, H);
 
   const anom = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) {
@@ -87,12 +101,18 @@ function generateHeatmapUrl(img: HTMLImageElement): string {
   const p95     = sorted[Math.floor(sorted.length * 0.95)] || 1;
 
   for (let i = 0; i < W * H; i++) {
-    const t = Math.min(1, blurred[i] / p95);
-    const [tr, tg, tb] = skinThermalColor(t);
+    const r = px[i*4], g = px[i*4+1], b = px[i*4+2];
     const o = i * 4;
-    id.data[o]   = Math.round(tr * 0.65 + px[o]   * 0.35);
-    id.data[o+1] = Math.round(tg * 0.65 + px[o+1] * 0.35);
-    id.data[o+2] = Math.round(tb * 0.65 + px[o+2] * 0.35);
+    if (!isSkin(r, g, b)) {
+      const gray = Math.round((0.299 * r + 0.587 * g + 0.114 * b) * 0.38);
+      id.data[o] = gray; id.data[o+1] = gray; id.data[o+2] = gray;
+    } else {
+      const t = Math.min(1, blurred[i] / p95);
+      const [tr, tg, tb] = skinThermalColor(t);
+      id.data[o]   = Math.round(tr * 0.7 + r * 0.3);
+      id.data[o+1] = Math.round(tg * 0.7 + g * 0.3);
+      id.data[o+2] = Math.round(tb * 0.7 + b * 0.3);
+    }
   }
   ctx.putImageData(id, 0, 0);
   return c.toDataURL("image/jpeg", 0.88);
@@ -109,7 +129,7 @@ function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string, bbox?: { 
   ctx.drawImage(img, 0, 0, W, H);
   const id = ctx.getImageData(0, 0, W, H);
   const px = id.data;
-  const [mr, mg, mb] = getSkinMedian(px, W, H);
+  const [mr, mg, mb] = skinMean(px, W, H);
 
   const anom = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) {
@@ -252,9 +272,17 @@ function SemicircleGauge({ score, level }: { score: number; level: "low" | "medi
   );
 }
 
+const ABCDE_LABELS: Record<string, string> = {
+  asymmetry: "Асимметрия",
+  border:    "Контур краёв",
+  color:     "Цвет",
+  diameter:  "Диаметр",
+  evolution: "Динамика",
+};
+
 // ── Hero Carousel: Original → Heatmap → Segmentation ────────────────────────
 function HeroCarousel({
-  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date, primaryDx, lesionBbox,
+  imageUrl, riskBadge, riskLevelLabel, zoneLabel, date, primaryDx, lesionBbox, abcde,
 }: {
   imageUrl: string | null;
   riskBadge: string;
@@ -263,12 +291,19 @@ function HeroCarousel({
   date: string;
   primaryDx?: string;
   lesionBbox?: { x: number; y: number; w: number; h: number } | null;
+  abcde?: { asymmetry: number; border: number; color: number; diameter: number; evolution: number };
 }) {
   const { t } = useI18n();
   const [slide, setSlide] = useState(0);
   const [heatUrl, setHeatUrl] = useState<string | null>(null);
   const [segUrl,  setSegUrl]  = useState<string | null>(null);
   const startX = useRef(0);
+
+  // Top ABCDE concern factor for thermal subtitle
+  const topFactor = abcde
+    ? (Object.entries(abcde).sort(([, a], [, b]) => (b as number) - (a as number))[0])
+    : null;
+  const topFactorLabel = topFactor ? ABCDE_LABELS[topFactor[0]] : null;
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -282,9 +317,9 @@ function HeroCarousel({
   }, [imageUrl, primaryDx, lesionBbox]);
 
   const slides = [
-    { url: imageUrl, badge: "ОРИГИНАЛ" },
-    { url: heatUrl,  badge: "ТЕПЛОВИЗОР" },
-    { url: segUrl,   badge: "AI ДЕТЕКЦИЯ" },
+    { url: imageUrl, badge: "ОРИГИНАЛ",    sub: "исходное фото" },
+    { url: heatUrl,  badge: "ТЕПЛОВИЗОР",  sub: topFactorLabel ? `${topFactorLabel} · YCbCr` : "YCbCr · кожа" },
+    { url: segUrl,   badge: "AI АНАЛИЗ",    sub: primaryDx ?? "область очага" },
   ];
 
   const current = slides[slide];
@@ -320,8 +355,9 @@ function HeroCarousel({
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
 
       {/* Slide type badge */}
-      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full z-10">
-        <span className="text-white text-[10px] font-bold uppercase tracking-wider">{current.badge}</span>
+      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm px-2.5 py-1.5 rounded-xl z-10">
+        <span className="text-white text-[10px] font-bold uppercase tracking-wider block leading-none">{current.badge}</span>
+        <span className="text-white/55 text-[9px] font-medium block mt-0.5 leading-none">{current.sub}</span>
       </div>
 
       {/* Risk badge */}
@@ -461,6 +497,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
           date={formatDate(scan.created_at)}
           primaryDx={scan.differential_diagnosis?.[0]?.name}
           lesionBbox={scan.lesion_bbox}
+          abcde={scan.abcde}
         />
 
         <div className="px-4 space-y-4">

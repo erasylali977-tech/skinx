@@ -9,6 +9,35 @@ import { type ImageZoneId, type BodyGender, ZONE_DETAIL_MAP } from "@/lib/zoneDe
 import { ZoneGrid } from "@/components/ZoneGrid";
 
 // ── Canvas helpers: skin-anomaly detection (shared with loading overlay) ───────
+
+// YCbCr skin detection (Kovac et al.) — filters out background, clothing, etc.
+function isSkin(r: number, g: number, b: number): boolean {
+  const cb = -0.169 * r - 0.331 * g + 0.500 * b + 128;
+  const cr =  0.500 * r - 0.419 * g - 0.081 * b + 128;
+  return cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173;
+}
+
+// Skin mean using YCbCr-detected pixels; falls back to center crop
+function skinMean(px: Uint8ClampedArray, W: number, H: number): [number, number, number] {
+  let rS = 0, gS = 0, bS = 0, ns = 0;
+  for (let i = 0; i < W * H; i++) {
+    const r = px[i*4], g = px[i*4+1], b = px[i*4+2];
+    if (isSkin(r, g, b)) { rS += r; gS += g; bS += b; ns++; }
+  }
+  if (ns > W * H * 0.05) return [rS / ns, gS / ns, bS / ns];
+  // fallback: center 30% crop
+  const sr = Math.floor(Math.min(W, H) * 0.15);
+  const cx = Math.floor(W / 2), cy = Math.floor(H / 2);
+  let rF = 0, gF = 0, bF = 0, n = 0;
+  for (let y = cy - sr; y <= cy + sr; y++)
+    for (let x = cx - sr; x <= cx + sr; x++) {
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      const i = (y * W + x) * 4;
+      rF += px[i]; gF += px[i+1]; bF += px[i+2]; n++;
+    }
+  return n > 0 ? [rF / n, gF / n, bF / n] : [128, 100, 90];
+}
+
 // Green = normal skin, Yellow/Orange = deviation, Red = high anomaly
 function skinThermalColor(t: number): [number, number, number] {
   const v = Math.max(0, Math.min(1, t));
@@ -42,7 +71,7 @@ function boxBlur(src: Float32Array, W: number, H: number, r: number): Float32Arr
   return out;
 }
 
-// Skin-anomaly heatmap: chromatic deviation from center median → green→red
+// Skin-anomaly heatmap: YCbCr skin mask → chromatic deviation → thermal
 function generateHeatmapUrl(img: HTMLImageElement): string {
   const MAX = 400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
@@ -54,20 +83,8 @@ function generateHeatmapUrl(img: HTMLImageElement): string {
   const id = ctx.getImageData(0, 0, W, H);
   const px = id.data;
 
-  // Sample median skin color from center 30% region
-  const sr = Math.floor(Math.min(W, H) * 0.15);
-  const ccx = Math.floor(W / 2), ccy = Math.floor(H / 2);
-  let rS = 0, gS = 0, bS = 0, ns = 0;
-  for (let y = ccy - sr; y <= ccy + sr; y++) {
-    for (let x = ccx - sr; x <= ccx + sr; x++) {
-      if (x < 0 || x >= W || y < 0 || y >= H) continue;
-      const i = (y * W + x) * 4;
-      rS += px[i]; gS += px[i+1]; bS += px[i+2]; ns++;
-    }
-  }
-  const mr = ns > 0 ? rS / ns : 128, mg = ns > 0 ? gS / ns : 100, mb = ns > 0 ? bS / ns : 90;
+  const [mr, mg, mb] = skinMean(px, W, H);
 
-  // Per-pixel chromatic distance from median
   const anom = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) {
     const dr = px[i*4]-mr, dg = px[i*4+1]-mg, db = px[i*4+2]-mb;
@@ -77,14 +94,20 @@ function generateHeatmapUrl(img: HTMLImageElement): string {
   const sorted  = Float32Array.from(blurred).sort();
   const p95     = sorted[Math.floor(sorted.length * 0.95)] || 1;
 
-  // Blend thermal (65%) + original (35%)
   for (let i = 0; i < W * H; i++) {
-    const t = Math.min(1, blurred[i] / p95);
-    const [tr, tg, tb] = skinThermalColor(t);
+    const r = px[i*4], g = px[i*4+1], b = px[i*4+2];
     const o = i * 4;
-    id.data[o]   = Math.round(tr * 0.65 + px[o]   * 0.35);
-    id.data[o+1] = Math.round(tg * 0.65 + px[o+1] * 0.35);
-    id.data[o+2] = Math.round(tb * 0.65 + px[o+2] * 0.35);
+    if (!isSkin(r, g, b)) {
+      // Non-skin (background, clothing) → dim gray
+      const gray = Math.round((0.299 * r + 0.587 * g + 0.114 * b) * 0.38);
+      id.data[o] = gray; id.data[o+1] = gray; id.data[o+2] = gray;
+    } else {
+      const t = Math.min(1, blurred[i] / p95);
+      const [tr, tg, tb] = skinThermalColor(t);
+      id.data[o]   = Math.round(tr * 0.7 + r * 0.3);
+      id.data[o+1] = Math.round(tg * 0.7 + g * 0.3);
+      id.data[o+2] = Math.round(tb * 0.7 + b * 0.3);
+    }
   }
   ctx.putImageData(id, 0, 0);
   return c.toDataURL("image/jpeg", 0.88);
@@ -102,17 +125,7 @@ function generateSegmentUrl(img: HTMLImageElement): string {
   const id = ctx.getImageData(0, 0, W, H);
   const px = id.data;
 
-  const sr = Math.floor(Math.min(W, H) * 0.15);
-  const ccx = Math.floor(W / 2), ccy = Math.floor(H / 2);
-  let rS = 0, gS = 0, bS = 0, ns = 0;
-  for (let y = ccy - sr; y <= ccy + sr; y++) {
-    for (let x = ccx - sr; x <= ccx + sr; x++) {
-      if (x < 0 || x >= W || y < 0 || y >= H) continue;
-      const i = (y * W + x) * 4;
-      rS += px[i]; gS += px[i+1]; bS += px[i+2]; ns++;
-    }
-  }
-  const mr = ns > 0 ? rS / ns : 128, mg = ns > 0 ? gS / ns : 100, mb = ns > 0 ? bS / ns : 90;
+  const [mr, mg, mb] = skinMean(px, W, H);
 
   const anom = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) {
@@ -179,10 +192,10 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
   const [segUrl,  setSegUrl]  = useState<string | null>(null);
 
   const STEP_LABELS = [
-    t.scan.stepTexture,
-    t.scan.stepColor,
-    t.scan.stepShape,
-    t.scan.stepRisk,
+    "Анализ текстуры и структуры...",
+    "Оценка хроматических паттернов...",
+    "Сегментация области поражения...",
+    "Формирование диагноза и рекомендаций...",
   ];
   const currentStep = pct < 30 ? 0 : pct < 57 ? 1 : pct < 85 ? 2 : 3;
 
@@ -219,8 +232,8 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
     photoUrl;
 
   const phaseLabel =
-    phase === 2 ? "Сегментация новообразования" :
-    phase === 1 ? "Тепловая карта анализа" :
+    phase === 2 ? "Поиск области поражения..." :
+    phase === 1 ? "YCbCr анализ кожи..." :
     STEP_LABELS[currentStep];
 
   return (
@@ -251,7 +264,7 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
         {/* Phase badge overlay */}
         <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full">
           <span className="text-white text-[10px] font-bold uppercase tracking-wider">
-            {phase === 2 ? "SEGMENT" : phase === 1 ? "THERMAL" : "ORIGINAL"}
+            {phase === 2 ? "AI АНАЛИЗ" : phase === 1 ? "ТЕПЛОВИЗОР" : "ОРИГИНАЛ"}
           </span>
         </div>
       </div>
