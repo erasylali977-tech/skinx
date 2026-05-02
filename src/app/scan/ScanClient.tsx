@@ -198,6 +198,7 @@ type ScanStep = "zones" | "scan";
 export function ScanClient() {
   const router = useRouter();
   const { t, locale } = useI18n();
+  console.log("SkinX Debug: Version 1.1 - Roboflow Integration Active");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [step,         setStep]         = useState<ScanStep>("zones");
