@@ -181,7 +181,7 @@ Rules:
 - status: "review" when high risk, otherwise "stable"
 - differentialDiagnosis: top 3 most likely skin conditions ordered by probability descending; probabilities must sum to 100
 - Names in differentialDiagnosis MUST be in ${lang}
-- lesionBbox: draw the tightest box around the primary area of concern (mole, rash, lesion). If no clear lesion, use {"x":0.25,"y":0.25,"w":0.5,"h":0.5}
+- lesionBbox: x and y are the TOP-LEFT corner of the box (NOT the center). Example: lesion centered at 50%/50% with size 20%/20% → {"x":0.40,"y":0.40,"w":0.20,"h":0.20}. Draw the tightest box around the primary area of concern (mole, rash, lesion). If no clear lesion, use {"x":0.25,"y":0.25,"w":0.5,"h":0.5}
 - Warts/verrucas are typically low risk — score accordingly
 - If image is unclear or not skin, set all ABCDE scores to 0 and note it
 - This is for monitoring only, not medical diagnosis

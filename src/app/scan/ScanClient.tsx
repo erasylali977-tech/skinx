@@ -133,20 +133,25 @@ function generateSegmentUrl(img: HTMLImageElement): string {
     anom[i] = Math.sqrt(dr*dr + dg*dg + db*db);
   }
 
-  // Bounding box of top 12% anomalous pixels
-  const sorted = Float32Array.from(anom).sort();
-  const thresh = sorted[Math.floor(sorted.length * 0.88)];
-  let x0 = W, x1 = 0, y0 = H, y1 = 0, found = false;
-  for (let y = 0; y < H; y++) {
+  // Peak-anchored bbox: find hottest anomaly point, grow bbox to all pixels
+  // above 35% of peak value within 40% image-radius — eliminates hair/reflection drift
+  const blurred = boxBlur(anom, W, H, Math.max(2, Math.floor(Math.min(W, H) * 0.04)));
+  let peakVal = 0, peakX = 0, peakY = 0;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (blurred[y * W + x] > peakVal) { peakVal = blurred[y * W + x]; peakX = x; peakY = y; }
+  if (!peakVal) return c.toDataURL("image/jpeg", 0.88);
+  const thresh = peakVal * 0.35;
+  const maxR2 = Math.pow(Math.min(W, H) * 0.40, 2);
+  let x0 = peakX, x1 = peakX, y0 = peakY, y1 = peakY;
+  for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
-      if (anom[y * W + x] >= thresh) {
+      const dx = x - peakX, dy = y - peakY;
+      if (blurred[y * W + x] >= thresh && dx * dx + dy * dy <= maxR2) {
         if (x < x0) x0 = x; if (x > x1) x1 = x;
         if (y < y0) y0 = y; if (y > y1) y1 = y;
-        found = true;
       }
     }
-  }
-  if (!found) return c.toDataURL("image/jpeg", 0.88);
 
   const pad = Math.round(Math.min(W, H) * 0.05);
   const bx = Math.max(0, x0 - pad), by = Math.max(0, y0 - pad);

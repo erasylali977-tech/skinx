@@ -146,18 +146,24 @@ function generateSegmentUrl(img: HTMLImageElement, primaryDx?: string, bbox?: { 
     bw = Math.min(W - bx, Math.max(8, Math.round(bbox.w * W)));
     bh = Math.min(H - by, Math.max(8, Math.round(bbox.h * H)));
   } else {
-    // Heuristic fallback: bounding box of top 12% anomalous pixels
-    const sorted = Float32Array.from(anom).sort();
-    const thresh = sorted[Math.floor(sorted.length * 0.88)];
-    let x0 = W, x1 = 0, y0 = H, y1 = 0, found = false;
+    // Heuristic fallback: peak-anchored bbox from hottest anomaly spot
+    const blurredH = boxBlur(anom, W, H, Math.max(2, Math.floor(Math.min(W, H) * 0.04)));
+    let peakVal = 0, peakX = 0, peakY = 0;
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++)
-        if (anom[y * W + x] >= thresh) {
+        if (blurredH[y * W + x] > peakVal) { peakVal = blurredH[y * W + x]; peakX = x; peakY = y; }
+    if (!peakVal) { ctx.putImageData(id, 0, 0); return c.toDataURL("image/jpeg", 0.88); }
+    const thresh = peakVal * 0.35;
+    const maxR2 = Math.pow(Math.min(W, H) * 0.40, 2);
+    let x0 = peakX, x1 = peakX, y0 = peakY, y1 = peakY;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const dx = x - peakX, dy = y - peakY;
+        if (blurredH[y * W + x] >= thresh && dx * dx + dy * dy <= maxR2) {
           if (x < x0) x0 = x; if (x > x1) x1 = x;
           if (y < y0) y0 = y; if (y > y1) y1 = y;
-          found = true;
         }
-    if (!found) { ctx.putImageData(id, 0, 0); return c.toDataURL("image/jpeg", 0.88); }
+      }
     const pad = Math.round(Math.min(W, H) * 0.05);
     bx = Math.max(0, x0 - pad); by = Math.max(0, y0 - pad);
     bw = Math.min(W - bx, x1 - x0 + pad * 2); bh = Math.min(H - by, y1 - y0 + pad * 2);
