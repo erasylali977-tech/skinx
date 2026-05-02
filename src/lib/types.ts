@@ -17,6 +17,9 @@ export type Scan = {
   };
   differential_diagnosis?: Array<{ name: string; probability: number }>;
   lesion_bbox?: { x: number; y: number; w: number; h: number } | null;
+  body_x?: number | null;
+  body_y?: number | null;
+  body_side?: "front" | "back" | null;
   created_at: string;
 };
 

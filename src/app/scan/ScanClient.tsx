@@ -6,7 +6,7 @@ import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 import { ScanCamera } from "./ScanCamera";
 import { type ImageZoneId, type BodyGender, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
-import { ZoneGrid } from "@/components/ZoneGrid";
+import { BodyPinPicker } from "@/components/BodyPinPicker";
 
 // ── Canvas helpers: skin-anomaly detection (shared with loading overlay) ───────
 
@@ -300,19 +300,11 @@ export function ScanClient() {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [step,         setStep]         = useState<ScanStep>("zones");
-  const [gender,       setGender]       = useState<BodyGender>("male");
-
-  // Persist & restore gender preference
-  useEffect(() => {
-    const saved = localStorage.getItem("skinx_gender") as BodyGender | null;
-    if (saved === "male" || saved === "female") setGender(saved);
-  }, []);
-
-  function changeGender(g: BodyGender) {
-    setGender(g);
-    localStorage.setItem("skinx_gender", g);
-  }
+  const [gender] = useState<BodyGender>("male"); // kept for ZONE_DETAIL_MAP lookups
   const [selectedZone,    setSelectedZone]    = useState<ImageZoneId | null>(null);
+  const [bodyNormX,    setBodyNormX]    = useState<number | null>(null);
+  const [bodyNormY,    setBodyNormY]    = useState<number | null>(null);
+  const [bodySide,     setBodySide]     = useState<"front" | "back">("front");
   const [preview,      setPreview]      = useState<string | null>(null);
   const [file,         setFile]         = useState<File | null>(null);
   const [uploading,    setUploading]    = useState(false);
@@ -350,6 +342,9 @@ export function ScanClient() {
       const fd = new FormData();
       fd.append("image", file);
       if (selectedZone) fd.append("body_area", selectedZone);
+      if (bodyNormX !== null) fd.append("body_x", String(bodyNormX));
+      if (bodyNormY !== null) fd.append("body_y", String(bodyNormY));
+      fd.append("body_side", bodySide);
       fd.append("locale", locale);
       const res = await fetch("/api/scans", { method: "POST", body: fd });
       if (!res.ok) {
@@ -366,68 +361,37 @@ export function ScanClient() {
     }
   }
 
-  // ── Step: zone grid ─────────────────────────────────────────────────────
+  // ── Step: body pin picker ─────────────────────────────────────────────────
   if (step === "zones") {
     return (
       <div className="h-screen w-screen flex flex-col bg-background text-on-surface overflow-hidden">
+        {/* Close button */}
+        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-14 pb-2">
+          <Link
+            href="/home"
+            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <Icon name="close" />
+          </Link>
+          <span className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">SkinX</span>
+          <div className="w-10" />
+        </div>
 
-        {/* Header */}
-        <header className="flex-shrink-0 px-5 pt-14 pb-4">
-          <div className="flex items-center justify-between mb-5">
-            <Link
-              href="/home"
-              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <Icon name="close" />
-            </Link>
-
-            {/* Gender toggle */}
-            <div className="flex bg-surface-container rounded-2xl p-1 gap-1">
-              <button
-                onClick={() => changeGender("male")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
-                  gender === "male"
-                    ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
-                    : "text-on-surface-variant"
-                }`}
-              >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <circle cx="5" cy="8" r="4" stroke="currentColor" strokeWidth="1.6"/>
-                  <path d="M8.5 4.5L12 1M12 1H9M12 1V4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {locale === "ru" ? "Муж" : locale === "kk" ? "Ер" : "Male"}
-              </button>
-              <button
-                onClick={() => changeGender("female")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
-                  gender === "female"
-                    ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
-                    : "text-on-surface-variant"
-                }`}
-              >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <circle cx="6.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.6"/>
-                  <path d="M6.5 9.5V12.5M4.5 11h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                </svg>
-                {locale === "ru" ? "Жен" : locale === "kk" ? "Әйел" : "Female"}
-              </button>
-            </div>
-          </div>
-
-          <h1 className="text-[26px] font-black tracking-tight leading-tight">
-            {t.scan.selectZoneTitle}
-          </h1>
-          <p className="text-on-surface-variant text-sm mt-1">
-            {t.scan.tapBodyArea}
-          </p>
-        </header>
-
-        {/* Zone grid */}
-        <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <ZoneGrid
-            gender={gender}
-            onSelect={(zone) => {
+        {/* Body pin picker */}
+        <div className="flex-1 overflow-hidden">
+          <BodyPinPicker
+            onSelect={(zone, normX, normY, side) => {
               setSelectedZone(zone);
+              setBodyNormX(normX);
+              setBodyNormY(normY);
+              setBodySide(side);
+              setStep("scan");
+              setCameraOpen(true);
+            }}
+            onSkip={() => {
+              setSelectedZone(null);
+              setBodyNormX(null);
+              setBodyNormY(null);
               setStep("scan");
               setCameraOpen(true);
             }}

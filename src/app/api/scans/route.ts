@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "image required" }, { status: 400 });
   }
-  const bodyArea = (form.get("body_area") as string | null) || null;
+  const bodyArea  = form.get("body_area")  as string | null;
+  const bodyX     = form.get("body_x")     ? Number(form.get("body_x"))   : null;
+  const bodyY     = form.get("body_y")     ? Number(form.get("body_y"))   : null;
+  const bodySide  = (form.get("body_side") as string | null) ?? null;
   const locale   = (form.get("locale")    as string | null) || "en";
 
   const arrayBuffer = await file.arrayBuffer();
@@ -135,6 +138,9 @@ export async function POST(request: NextRequest) {
       summary: analysis.summary,
       differential_diagnosis: analysis.differentialDiagnosis,
       lesion_bbox: analysis.lesionBbox ?? null,
+      body_x:     bodyX,
+      body_y:     bodyY,
+      body_side:  bodySide,
     };
 
     let inserted: { id: string } | null = null;
@@ -163,6 +169,16 @@ export async function POST(request: NextRequest) {
     }
     if (error?.message?.includes("lesion_bbox")) {
       delete insertPayload.lesion_bbox;
+      ({ data: inserted, error } = await supabase
+        .from("scans")
+        .insert(insertPayload)
+        .select("id")
+        .single());
+    }
+    if (error?.message?.includes("body_x") || error?.message?.includes("body_y") || error?.message?.includes("body_side")) {
+      delete insertPayload.body_x;
+      delete insertPayload.body_y;
+      delete insertPayload.body_side;
       ({ data: inserted, error } = await supabase
         .from("scans")
         .insert(insertPayload)
