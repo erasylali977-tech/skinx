@@ -16,6 +16,20 @@ type Props = {
   thumbs: (string | null)[];
 };
 
+const GREETINGS = {
+  en: { morning: "Good morning",  afternoon: "Good afternoon",  evening: "Good evening",  night: "Good night"   },
+  ru: { morning: "Доброе утро",   afternoon: "Добрый день",     evening: "Добрый вечер",  night: "Доброй ночи"  },
+  kk: { morning: "Қайырлы таң",  afternoon: "Қайырлы күн",    evening: "Қайырлы кеш",  night: "Қайырлы түн"  },
+};
+
+function getTimeGreeting(loc: string, h: number): string {
+  const g = GREETINGS[loc as keyof typeof GREETINGS] ?? GREETINGS.en;
+  if (h >= 5  && h < 12) return g.morning;
+  if (h >= 12 && h < 17) return g.afternoon;
+  if (h >= 17 && h < 22) return g.evening;
+  return g.night;
+}
+
 const RISK_COLORS = {
   low:    { bg: "bg-emerald-500/15", text: "text-emerald-500", dot: "bg-emerald-500",  label: { ru: "Низкий",   en: "Low",    kk: "Төмен" } },
   medium: { bg: "bg-amber-400/15",   text: "text-amber-500",   dot: "bg-amber-400",   label: { ru: "Средний",  en: "Medium", kk: "Орта" } },
@@ -26,7 +40,11 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
   const { t, locale } = useI18n();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [timeGreeting, setTimeGreeting] = useState("");
+  useEffect(() => {
+    setMounted(true);
+    setTimeGreeting(getTimeGreeting(locale, new Date().getHours()));
+  }, [locale]);
 
   const lastScan   = scans[0];
   const totalScans = scans.length;
@@ -37,7 +55,7 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
       <DisclaimerModal />
 
       {/* ── Slim top bar ── */}
-      <header className="fixed top-0 left-0 w-full z-40 bg-background/80 backdrop-blur-xl">
+      <header className="fixed top-0 left-0 w-full z-40 bg-background/80 backdrop-blur-xl" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="flex items-center justify-between px-5 py-3 max-w-md mx-auto">
           <div className="flex items-center gap-2">
             <Icon name="spa" filled className="text-primary text-xl" />
@@ -59,14 +77,14 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
         </div>
       </header>
 
-      <main className="pt-14 max-w-md mx-auto md:max-w-4xl">
+      <main className="max-w-md mx-auto md:max-w-4xl" style={{ paddingTop: "calc(3.75rem + env(safe-area-inset-top))" }}>
 
         {/* ── Greeting ── */}
         <section className="px-5 pt-6 pb-5">
-          <p className="text-on-surface-variant text-[13px] font-medium mb-0.5">
-            {t.home.greeting}
+          <p className="text-on-surface-variant text-[17px] font-semibold mb-1">
+            {timeGreeting}
           </p>
-          <h1 className="text-[30px] leading-[1.1] font-black tracking-tight">
+          <h1 className="text-[38px] leading-[1.1] font-black tracking-tight">
             {firstName} 👋
           </h1>
         </section>
