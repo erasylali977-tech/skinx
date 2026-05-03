@@ -70,9 +70,6 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                 <Icon name={resolvedTheme === "dark" ? "light_mode" : "dark_mode"} className="text-on-surface-variant text-[18px]" />
               </button>
             )}
-            <Link href="/account" className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center">
-              <Icon name="person" className="text-on-surface-variant text-[18px]" />
-            </Link>
           </div>
         </div>
       </header>
@@ -81,11 +78,8 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
 
         {/* ── Greeting ── */}
         <section className="px-5 pt-6 pb-5">
-          <p className="text-primary text-[17px] font-semibold mb-1">
-            {timeGreeting},
-          </p>
-          <h1 className="text-[38px] leading-[1.1] font-black tracking-tight">
-            {firstName} 👋
+          <h1 className="text-[28px] leading-[1.2] font-black tracking-tight">
+            <span className="text-primary">{timeGreeting}, </span>{firstName} 👋
           </h1>
         </section>
 

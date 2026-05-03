@@ -379,7 +379,7 @@ export const translations = {
       startScan: "Начать сканирование",
       analyzeSkin: "Анализ состояния кожи",
       heroTitle: "Анализ состояния кожи",
-      heroSubtitle: "SkinX видит то, что скрыто от глаза.",
+      heroSubtitle: "SkinX видит то, что скрыто от глаз.",
       selectZoneBtn: "Выбрать зону",
       recentScans: "Последние сканирования",
       noScans: "Сканирований ещё нет",
