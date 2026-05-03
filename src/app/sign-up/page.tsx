@@ -10,20 +10,20 @@ export default function SignUpPage() {
       <main className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 w-full max-w-md mx-auto">
         <div className="w-full flex flex-col items-center mb-10 space-y-4">
           {/* Animated logo */}
-          <div className="relative flex items-center justify-center w-28 h-28">
+          <div className="relative flex items-center justify-center w-32 h-32">
             {/* Focus pulse rings */}
-            <div className="logo-focus-ring absolute inset-0 rounded-[32px] bg-primary/30" />
-            <div className="logo-focus-ring-delay absolute inset-[-8px] rounded-[36px] bg-primary/15" />
-            {/* Logo */}
-            <div className="logo-breathe relative w-24 h-24">
-              <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-lg">
-                <circle cx="60" cy="60" r="58" fill="#2563eb"/>
-                <rect x="16" y="16" width="88" height="88" rx="22" fill="#3d7aed" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
-                <circle cx="60" cy="60" r="30" fill="white"/>
-                <circle cx="60" cy="60" r="22" fill="#5b8dee"/>
-                <circle cx="60" cy="60" r="12" fill="white"/>
-                <circle cx="60" cy="60" r="6" fill="#4a7de8"/>
-              </svg>
+            <div className="logo-focus-ring absolute inset-0 rounded-[36px] bg-primary/25" />
+            <div className="logo-focus-ring-delay absolute inset-[-10px] rounded-[40px] bg-primary/12" />
+            {/* MP4 logo loop */}
+            <div className="relative w-28 h-28 rounded-[28px] overflow-hidden shadow-primary-glow">
+              <video
+                src="/icons/logo-anim.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">
