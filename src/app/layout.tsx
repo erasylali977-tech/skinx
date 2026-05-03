@@ -33,6 +33,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" style={{ background: "#0c1527" }}>
+      <head>
+        {/* iOS PWA native splash — shows BEFORE WebView loads, replaces white screen */}
+        <link rel="apple-touch-startup-image" media="(device-width:320px) and (device-height:568px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"   href="/splashes/iphone-se.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"   href="/splashes/iphone-8.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:414px) and (device-height:736px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-8-plus.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-x.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"   href="/splashes/iphone-xr.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-xs-max.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:360px) and (device-height:780px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-12-mini.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-12.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:428px) and (device-height:926px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-12-pro-max.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-14-pro.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-14-pro-max.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-15-pro.png" />
+        <link rel="apple-touch-startup-image" media="(device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"   href="/splashes/iphone-15-pro-max.png" />
+      </head>
       <body className="bg-surface text-on-surface antialiased min-h-screen" style={{ background: "#0c1527" }}>
         {/* ── Splash screen: SSR-rendered, fades out after window.load ── */}
         <div
