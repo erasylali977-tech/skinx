@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "SkinX",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   icons: {
     icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
@@ -32,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-surface text-on-surface antialiased min-h-screen">
+    <html lang="en" style={{ background: "#0c1527" }}>
+      <body className="bg-surface text-on-surface antialiased min-h-screen" style={{ background: "#0c1527" }}>
         {/* ── Splash screen: SSR-rendered, fades out after window.load ── */}
         <div
           id="skinx-splash"

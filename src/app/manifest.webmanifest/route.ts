@@ -11,8 +11,8 @@ export function GET() {
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#faf9fe",
-    theme_color: "#0058bc",
+    background_color: "#0c1527",
+    theme_color: "#0c1527",
     icons: [
       {
         src: "/icons/icon.svg",
