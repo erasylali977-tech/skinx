@@ -30,7 +30,7 @@ export function DashboardContent({ scans, thumbs }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface pb-32 pt-24">
+    <div className="min-h-screen bg-surface text-on-surface pb-32" style={{ paddingTop: "calc(6rem + env(safe-area-inset-top))" }}>
       <AppHeader />
       <main className="max-w-5xl mx-auto px-6">
         <section className="mb-12 mt-4">

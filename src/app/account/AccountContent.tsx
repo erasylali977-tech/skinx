@@ -69,7 +69,7 @@ export function AccountContent({ email, full_name, profile }: Props) {
   const displayName = nickname || full_name || email.split("@")[0];
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface pb-32 pt-20">
+    <div className="min-h-screen bg-surface text-on-surface pb-32" style={{ paddingTop: "calc(5rem + env(safe-area-inset-top))" }}>
       <AppHeader />
       <main className="max-w-md mx-auto px-5 space-y-5">
 

@@ -12,7 +12,7 @@ export function AppHeader({ back }: { back?: string }) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="fixed top-0 left-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30">
+    <header className="fixed top-0 left-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="flex justify-between items-center w-full px-4 py-3 max-w-7xl mx-auto gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {back ? (

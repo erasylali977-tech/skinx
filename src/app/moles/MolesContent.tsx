@@ -24,7 +24,7 @@ export function MolesContent({ scans, thumbs }: Props) {
   const { t, locale } = useI18n();
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface pb-32 pt-20">
+    <div className="min-h-screen bg-surface text-on-surface pb-32" style={{ paddingTop: "calc(5rem + env(safe-area-inset-top))" }}>
       <AppHeader />
       <main className="max-w-md mx-auto px-5 space-y-4">
         <section className="pt-4 pb-2">

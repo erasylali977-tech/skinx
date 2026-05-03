@@ -81,8 +81,8 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
 
         {/* ── Greeting ── */}
         <section className="px-5 pt-6 pb-5">
-          <p className="text-on-surface-variant text-[17px] font-semibold mb-1">
-            {timeGreeting}
+          <p className="text-primary text-[17px] font-semibold mb-1">
+            {timeGreeting},
           </p>
           <h1 className="text-[38px] leading-[1.1] font-black tracking-tight">
             {firstName} 👋
@@ -104,22 +104,13 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
             <div className="absolute top-[-20px] right-[-20px] w-40 h-40 rounded-full bg-white/8 blur-2xl pointer-events-none" />
 
             {/* Content */}
-            <div className="relative z-10 px-5 py-5 flex items-center justify-between h-full">
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                  <span className="text-white/70 text-[11px] font-semibold uppercase tracking-widest">Gemini AI</span>
-                </div>
-                <p className="text-white text-[20px] font-black leading-tight tracking-tight mb-4">
-                  {t.home.heroSubtitle}
-                </p>
-                <div className="inline-flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2.5">
-                  <Icon name="document_scanner" className="text-white text-sm" />
-                  <span className="text-white text-sm font-bold">{t.home.heroTitle}</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center ml-4 flex-shrink-0">
-                <Icon name="arrow_forward" className="text-white text-base" />
+            <div className="relative z-10 px-5 py-6 flex flex-col justify-between" style={{ minHeight: 160 }}>
+              <p className="text-white text-[22px] font-black leading-tight tracking-tight mb-5">
+                {t.home.heroSubtitle}
+              </p>
+              <div className="inline-flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2.5 self-start">
+                <Icon name="document_scanner" className="text-white text-sm" />
+                <span className="text-white text-sm font-bold">{t.home.heroTitle}</span>
               </div>
             </div>
           </Link>
