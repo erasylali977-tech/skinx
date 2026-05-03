@@ -432,7 +432,7 @@ export function ScanClient() {
         </div>
 
         {/* Header */}
-        <header className="relative z-50 flex justify-between items-center w-full px-5 py-4 pt-14">
+        <header className="relative z-50 flex justify-between items-center w-full px-5 py-4" style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}>
           <button
             onClick={() => { setStep("zones"); setFile(null); setPreview(null); }}
             className="w-11 h-11 rounded-full bg-surface-container backdrop-blur-xl flex items-center justify-center shadow-ambient active:scale-95 transition-transform"

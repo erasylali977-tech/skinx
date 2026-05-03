@@ -482,7 +482,7 @@ export function MoleContent({ scan, sameArea, latestUrl, baselineUrl }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface pb-32 pt-16">
+    <div className="min-h-screen bg-surface text-on-surface pb-32" style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
       {/* Print-only header */}
       <div className="print-only p-6 border-b border-gray-200 mb-4">
         <div className="flex justify-between items-center">
