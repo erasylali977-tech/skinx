@@ -51,8 +51,31 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static
-  if (url.pathname.startsWith("/_next/") || url.pathname.startsWith("/icons/")) {
+  // JS/CSS chunks: network-first (change every build — cache-first causes 404 after deploy)
+  if (
+    url.pathname.startsWith("/_next/static/chunks/") ||
+    url.pathname.startsWith("/_next/static/css/")
+  ) {
+    event.respondWith(
+      (async () => {
+        try {
+          const net = await fetch(req);
+          if (net.ok) {
+            const cache = await caches.open(CACHE);
+            cache.put(req, net.clone()).catch(() => {});
+          }
+          return net;
+        } catch (_) {
+          const cache = await caches.open(CACHE);
+          return (await cache.match(req)) || Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Cache-first for truly static assets (fonts, icons, media — never change)
+  if (url.pathname.startsWith("/_next/static/media/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/splashes/")) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
@@ -60,7 +83,7 @@ self.addEventListener("fetch", (event) => {
         if (cached) return cached;
         try {
           const net = await fetch(req);
-          cache.put(req, net.clone()).catch(() => {});
+          if (net.ok) cache.put(req, net.clone()).catch(() => {});
           return net;
         } catch (_) {
           return Response.error();
