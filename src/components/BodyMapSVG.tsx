@@ -199,8 +199,6 @@ const T = {
   hint:     { ru: "Тапните на участок тела", en: "Tap a body part", kk: "Дене бөлігіне басыңыз" },
   front:    { ru: "Перед",                   en: "Front",           kk: "Алды"                  },
   back:     { ru: "Спина",                   en: "Back",            kk: "Арты"                  },
-  male:     { ru: "Муж",                     en: "Male",            kk: "Ер"                    },
-  female:   { ru: "Жен",                     en: "Female",          kk: "Әйел"                  },
   skip:     { ru: "Пропустить",              en: "Skip",            kk: "Өткізіп жіберу"        },
   selected: { ru: "Выбрана зона",            en: "Selected zone",   kk: "Таңдалған аймақ"       },
   confirm:  { ru: "Продолжить →",            en: "Continue →",      kk: "Жалғастыру →"          },
@@ -213,11 +211,10 @@ interface Props {
   onSkip:   () => void;
 }
 
-export function BodyMapSVG({ gender: initialGender, onSelect, onSkip }: Props) {
+export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
   const { locale } = useI18n();
   const l = locale as L;
 
-  const [gender,  setGender]  = useState<Gender>(initialGender);
   const [side,    setSide]    = useState<Side>("front");
   const [pending, setPending] = useState<ZoneDef | null>(null);
 
@@ -238,8 +235,8 @@ export function BodyMapSVG({ gender: initialGender, onSelect, onSkip }: Props) {
         <p className="text-on-surface-variant text-sm mt-0.5">{T.hint[l]}</p>
       </div>
 
-      {/* Front / Back + Gender toggles */}
-      <div className="flex-shrink-0 flex flex-col items-center gap-2 px-5 pb-2">
+      {/* Front / Back toggle */}
+      <div className="flex-shrink-0 flex justify-center px-5 pb-2">
         <div className="flex bg-surface-container rounded-2xl p-1 gap-1 w-full max-w-[280px]">
           {(["front", "back"] as Side[]).map((s) => (
             <button
@@ -250,23 +247,6 @@ export function BodyMapSVG({ gender: initialGender, onSelect, onSkip }: Props) {
               }`}
             >
               {s === "front" ? T.front[l] : T.back[l]}
-            </button>
-          ))}
-        </div>
-        <div className="flex bg-surface-container rounded-xl p-0.5 gap-0.5 w-full max-w-[280px]">
-          {(["male", "female"] as Gender[]).map((g) => (
-            <button
-              key={g}
-              onClick={() => { setGender(g); setPending(null); }}
-              className={`flex-1 py-1.5 rounded-[10px] text-xs font-semibold transition-all duration-200 ${
-                gender === g
-                  ? g === "male"
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-pink-500 text-white shadow-sm"
-                  : "text-on-surface-variant/60"
-              }`}
-            >
-              {g === "male" ? `♂ ${T.male[l]}` : `♀ ${T.female[l]}`}
             </button>
           ))}
         </div>
