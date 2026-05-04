@@ -83,7 +83,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                   </div>
                   <div className="flex items-center text-on-surface-variant text-xs gap-1 mt-1.5">
                     <Icon name="calendar_today" className="text-[13px]" />
-                    <span>{formatDateTime(s.created_at)}</span>
+                    <span>{formatDateTime(s.created_at, locale)}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-2">
                     <div className="h-1.5 flex-1 rounded-full bg-surface-container overflow-hidden">

@@ -2,18 +2,24 @@ export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function formatDate(iso: string | Date) {
+function toBrowserLocale(locale: string) {
+  if (locale === "ru") return "ru-RU";
+  if (locale === "kk") return "kk-KZ";
+  return "en-US";
+}
+
+export function formatDate(iso: string | Date, locale = "en") {
   const d = typeof iso === "string" ? new Date(iso) : iso;
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString(toBrowserLocale(locale), {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-export function formatDateTime(iso: string | Date) {
+export function formatDateTime(iso: string | Date, locale = "en") {
   const d = typeof iso === "string" ? new Date(iso) : iso;
-  return d.toLocaleString("en-US", {
+  return d.toLocaleString(toBrowserLocale(locale), {
     month: "short",
     day: "numeric",
     hour: "2-digit",

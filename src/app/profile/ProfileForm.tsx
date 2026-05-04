@@ -283,7 +283,7 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
               key={key}
               onClick={() => setSkinTexture(skinTexture === key ? "" : key)}
               className={cn(
-                "py-3 px-4 rounded-xl text-sm font-semibold border-2 transition-all",
+                "py-3 px-2 rounded-xl text-xs font-semibold border-2 transition-all leading-tight text-center",
                 skinTexture === key
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:bg-surface-container"

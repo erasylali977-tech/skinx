@@ -121,7 +121,22 @@ const BASE_ZONES: ZoneDef[] = [
              back:  { ru: "Правое бедро", en: "Right thigh", kk: "Оң сан"  } },
     normX: 0.43, normY: 0.613 },
 
-  // ── Shins — y≈103-125 ─────────────────────────────────────────────────────
+  // ── Knees — y≈103-111 ─────────────────────────────────────────────────────
+  { id: "knee_l",
+    el: "ellipse", a: { cx: 57, cy: 107, rx: 7, ry: 5 },
+    zone:  { front: "legs", back: "legs" },
+    label: { front: { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" },
+             back:  { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" } },
+    normX: 0.57, normY: 0.713 },
+
+  { id: "knee_r",
+    el: "ellipse", a: { cx: 43, cy: 107, rx: 7, ry: 5 },
+    zone:  { front: "legs", back: "legs" },
+    label: { front: { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  },
+             back:  { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  } },
+    normX: 0.43, normY: 0.713 },
+
+  // ── Shins — y≈103-125 ─────────────────────────────────────────────────────────────────
   { id: "shin_l",
     el: "ellipse", a: { cx: 58, cy: 121, rx: 7.5, ry: 10 },
     zone:  { front: "legs", back: "legs" },
@@ -266,6 +281,8 @@ export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
             draggable={false}
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
           />
+          {/* Cover embedded FRONT VIEW / BACK VIEW label from JPEG */}
+          <div className="absolute top-0 inset-x-0 h-[9%] bg-gradient-to-b from-surface-container to-transparent pointer-events-none" />
 
           {/* Transparent SVG hit zones — back view is horizontally mirrored */}
           <svg

@@ -127,7 +127,7 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                   {locale === "ru" ? "Последний" : locale === "kk" ? "Соңғы" : "Last"}
                 </span>
                 <span className="text-on-surface text-xs font-bold leading-tight mt-0.5">
-                  {formatDateTime(lastScan.created_at)}
+                  {formatDateTime(lastScan.created_at, locale)}
                 </span>
               </div>
               {/* Risk */}
@@ -194,7 +194,7 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
                         {getZoneDisplayLabel(s.body_area, locale) || t.home.skinCheck}
                       </p>
                       <p className="text-on-surface-variant text-[10px] mt-0.5">
-                        {formatDateTime(s.created_at)}
+                        {formatDateTime(s.created_at, locale)}
                       </p>
                     </div>
                   </Link>

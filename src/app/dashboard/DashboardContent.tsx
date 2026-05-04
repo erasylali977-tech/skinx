@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDate } from "@/lib/utils";
+import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 import type { Scan } from "@/lib/types";
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 };
 
 export function DashboardContent({ scans, thumbs }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const total = scans.length;
   const stable = scans.filter((s) => s.risk_level === "low").length;
@@ -84,7 +85,7 @@ export function DashboardContent({ scans, thumbs }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={thumbs[i] as string}
-                      alt={s.body_area || t.dashboard.skinCheck}
+                      alt={getZoneDisplayLabel(s.body_area, locale) || t.dashboard.skinCheck}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -106,10 +107,10 @@ export function DashboardContent({ scans, thumbs }: Props) {
                 </div>
                 <div className="p-5">
                   <h3 className="text-lg font-bold mb-1">
-                    {s.body_area || t.dashboard.skinCheck}
+                    {getZoneDisplayLabel(s.body_area, locale) || t.dashboard.skinCheck}
                   </h3>
                   <div className="flex justify-between items-center text-sm text-on-surface-variant">
-                    <span>{t.dashboard.scanned} {formatDate(s.created_at)}</span>
+                    <span>{t.dashboard.scanned} {formatDate(s.created_at, locale)}</span>
                     <Icon
                       name="arrow_forward"
                       className="text-outline group-hover:text-primary transition-colors"
