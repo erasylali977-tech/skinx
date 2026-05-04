@@ -97,7 +97,7 @@ export function SignInForm() {
       <button
         onClick={() => oauth("google")}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-4 px-6 rounded-full transition-all duration-200 active:scale-95 shadow-sm disabled:opacity-60"
+        className="w-full flex items-center justify-center gap-3 bg-surface border border-outline-variant hover:bg-surface-container-low text-on-surface py-4 px-6 rounded-full transition-all duration-200 active:scale-95 shadow-sm disabled:opacity-60"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -111,11 +111,11 @@ export function SignInForm() {
       </button>
 
       <div className="w-full flex items-center justify-center py-2">
-        <div className="h-px bg-gray-200 w-full" />
-        <span className="px-4 text-xs text-gray-500 font-medium uppercase tracking-widest">
+        <div className="h-px bg-outline-variant w-full" />
+        <span className="px-4 text-xs text-on-surface-variant font-medium uppercase tracking-widest">
           {t.signIn.or}
         </span>
-        <div className="h-px bg-gray-200 w-full" />
+        <div className="h-px bg-outline-variant w-full" />
       </div>
 
       {!showEmail ? (
@@ -133,7 +133,7 @@ export function SignInForm() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
+            className="w-full px-4 py-3 rounded-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
           />
           <input
             type="password"
@@ -142,7 +142,7 @@ export function SignInForm() {
             placeholder={t.signIn.password}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
+            className="w-full px-4 py-3 rounded-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
           />
           <div className="text-right">
             <a

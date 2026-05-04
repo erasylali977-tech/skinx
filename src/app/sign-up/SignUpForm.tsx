@@ -66,7 +66,7 @@ export function SignUpForm() {
         placeholder={t.signUp.namePlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
+        className="w-full px-4 py-3 rounded-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
       />
       <input
         type="email"
@@ -74,7 +74,7 @@ export function SignUpForm() {
         placeholder="you@example.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
+        className="w-full px-4 py-3 rounded-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
       />
       <input
         type="password"
@@ -83,7 +83,7 @@ export function SignUpForm() {
         placeholder={t.signUp.passwordHint}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 rounded-full bg-gray-100 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
+        className="w-full px-4 py-3 rounded-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container focus:ring-2 focus:ring-primary/30 focus:outline-none text-base"
       />
       {error ? (
         <p className="text-error text-sm font-medium text-center">{error}</p>
