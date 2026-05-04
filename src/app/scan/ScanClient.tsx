@@ -1,12 +1,12 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 import { ScanCamera } from "./ScanCamera";
-import { type ImageZoneId, type BodyGender, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
-import { BodyPinPicker } from "@/components/BodyPinPicker";
+import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
+import { BodyMapSVG } from "@/components/BodyMapSVG";
 
 // ── Canvas helpers: skin-anomaly detection (shared with loading overlay) ───────
 
@@ -299,13 +299,26 @@ function AnalyzingOverlay({ photoUrl }: { photoUrl: string | null }) {
 
 type ScanStep = "zones" | "scan";
 
-export function ScanClient() {
+function useThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+  const toggle = useCallback(() => {
+    const html = document.documentElement;
+    html.classList.toggle("dark");
+    setIsDark(html.classList.contains("dark"));
+  }, []);
+  return { isDark, toggle };
+}
+
+export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) {
   const router = useRouter();
   const { t, locale } = useI18n();
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const { isDark, toggle: toggleTheme } = useThemeToggle();
 
   const [step,         setStep]         = useState<ScanStep>("zones");
-  const [gender] = useState<BodyGender>("male"); // kept for ZONE_DETAIL_MAP lookups
   const [selectedZone,    setSelectedZone]    = useState<ImageZoneId | null>(null);
   const [bodyNormX,    setBodyNormX]    = useState<number | null>(null);
   const [bodyNormY,    setBodyNormY]    = useState<number | null>(null);
@@ -379,12 +392,31 @@ export function ScanClient() {
             <Icon name="close" />
           </Link>
           <span className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">SkinX</span>
-          <div className="w-10" />
+          <button
+            onClick={toggleTheme}
+            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center active:scale-95 transition-transform"
+            aria-label="Toggle theme"
+          >
+            {isDark ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-on-surface-variant">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-on-surface-variant">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Body pin picker */}
         <div className="flex-1 overflow-hidden">
-          <BodyPinPicker
+          <BodyMapSVG
+            gender={gender}
             onSelect={(zone, normX, normY, side) => {
               setSelectedZone(zone);
               setBodyNormX(normX);
