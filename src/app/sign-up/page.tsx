@@ -8,7 +8,7 @@ export default function SignUpPage() {
   return (
     <div className="bg-background text-on-surface flex flex-col min-h-screen">
       <main className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 w-full max-w-md mx-auto">
-        <div className="w-full flex flex-col items-center mb-10 space-y-4">
+        <div className="w-full flex flex-col items-center mb-6 space-y-3">
           {/* Animated logo */}
           <div className="relative flex items-center justify-center w-32 h-32">
             {/* Focus pulse rings */}

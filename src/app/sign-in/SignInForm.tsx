@@ -160,7 +160,7 @@ export function SignInForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 rounded-full bg-primary-gradient text-on-primary font-bold text-lg shadow-primary-glow active:scale-[0.98] disabled:opacity-60"
+            className="w-full py-4 rounded-full bg-primary-gradient text-white font-bold text-lg shadow-primary-glow active:scale-[0.98] disabled:opacity-60"
           >
             {loading ? t.signIn.signingIn : t.signIn.signInBtn}
           </button>

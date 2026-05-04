@@ -9,7 +9,7 @@ export default function SignInPage() {
   return (
     <div className="bg-background text-on-surface flex flex-col min-h-screen">
       <main className="flex-grow flex flex-col items-center justify-center p-6 sm:p-12 w-full max-w-md mx-auto">
-        <div className="w-full flex flex-col items-center justify-center mb-12 space-y-6">
+        <div className="w-full flex flex-col items-center justify-center mb-8 space-y-4">
           <div className="relative flex items-center justify-center w-32 h-32">
             <div className="logo-focus-ring absolute inset-0 rounded-[36px] bg-primary/25" />
             <div className="logo-focus-ring-delay absolute inset-[-10px] rounded-[40px] bg-primary/12" />

@@ -25,7 +25,7 @@ export const translations = {
       log: "Log",
     },
     welcome: {
-      headline: "Your Skin's Digital Guardian",
+      headline: "AI-powered skin health analysis",
       sub: "AI-driven precision and medical-grade tracking for moles and skin spots.",
       getStarted: "Get Started",
       signIn: "Sign In",
@@ -317,7 +317,7 @@ export const translations = {
       log: "Журнал",
     },
     welcome: {
-      headline: "Цифровой страж вашей кожи",
+      headline: "ИИ-анализ здоровья вашей кожи",
       sub: "ИИ-точность и медицинский мониторинг родинок и пятен на коже.",
       getStarted: "Начать",
       signIn: "Войти",
@@ -609,7 +609,7 @@ export const translations = {
       log: "Журнал",
     },
     welcome: {
-      headline: "Теріңіздің цифрлық қорғаншысы",
+      headline: "Жасанды интеллект — тері денсаулығын талдайды",
       sub: "Тері дақтары мен меңдерді жасанды интеллект арқылы дәл бақылау.",
       getStarted: "Бастау",
       signIn: "Кіру",
