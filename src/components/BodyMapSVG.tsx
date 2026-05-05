@@ -279,10 +279,9 @@ export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
             src={`/assets/body/${gender}-${side}.jpg`}
             alt=""
             draggable={false}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+            className="absolute left-0 right-0 w-full object-cover pointer-events-none select-none"
+            style={{ top: "-7%", height: "107%" }}
           />
-          {/* Cover embedded FRONT VIEW / BACK VIEW label from JPEG */}
-          <div className="absolute top-0 inset-x-0 h-[9%] bg-gradient-to-b from-surface-container to-transparent pointer-events-none" />
 
           {/* Transparent SVG hit zones — back view is horizontally mirrored */}
           <svg
