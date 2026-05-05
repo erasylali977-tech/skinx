@@ -24,14 +24,14 @@ interface ZoneDef {
 const BASE_ZONES: ZoneDef[] = [
   // ── Head & neck ────────────────────────────────────────────────────────────
   { id: "head",
-    el: "circle", a: { cx: 50, cy: 14, r: 7.5 },
+    el: "circle", a: { cx: 50, cy: 4, r: 7.5 },
     zone:  { front: "face",    back: "face"    },
     label: { front: { ru: "Голова / Лицо",  en: "Head / Face",   kk: "Бас / Бет"       },
              back:  { ru: "Голова",          en: "Head",          kk: "Бас"             } },
     normX: 0.50, normY: 0.093 },
 
   { id: "neck",
-    el: "ellipse", a: { cx: 50, cy: 26, rx: 4.5, ry: 3 },
+    el: "ellipse", a: { cx: 50, cy: 16, rx: 4.5, ry: 3 },
     zone:  { front: "neck",    back: "neck"    },
     label: { front: { ru: "Шея",  en: "Neck",  kk: "Мойын" },
              back:  { ru: "Шея",  en: "Neck",  kk: "Мойын" } },
@@ -39,14 +39,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Upper arms (shoulder to elbow) — cx ≈ 32 / 68, cy ≈ 36 ────────────────
   { id: "uarm_l",
-    el: "ellipse", a: { cx: 68, cy: 37, rx: 5.5, ry: 10 },
+    el: "ellipse", a: { cx: 68, cy: 27, rx: 5.5, ry: 10 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Левое плечо",  en: "Left shoulder",  kk: "Сол иық" },
              back:  { ru: "Левое плечо",  en: "Left shoulder",  kk: "Сол иық" } },
     normX: 0.68, normY: 0.247 },
 
   { id: "uarm_r",
-    el: "ellipse", a: { cx: 32, cy: 37, rx: 5.5, ry: 10 },
+    el: "ellipse", a: { cx: 32, cy: 27, rx: 5.5, ry: 10 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Правое плечо", en: "Right shoulder", kk: "Оң иық"  },
              back:  { ru: "Правое плечо", en: "Right shoulder", kk: "Оң иық"  } },
@@ -54,7 +54,7 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Chest — only pectoral area y≈27-46 ────────────────────────────────────
   { id: "chest",
-    el: "path", a: { d: "M37,31 Q51,29 63,31 L61,48 L39,48 Z" },
+    el: "path", a: { d: "M37,21 Q51,19 63,21 L61,38 L39,38 Z" },
     zone:  { front: "chest",   back: "back"    },
     label: { front: { ru: "Грудь",         en: "Chest",      kk: "Кеуде"        },
              back:  { ru: "Верхняя спина", en: "Upper back", kk: "Жоғарғы арқа" } },
@@ -62,7 +62,7 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Abdomen — navel area y≈47-63 ──────────────────────────────────────────
   { id: "abdomen",
-    el: "rect", a: { x: 39, y: 47, width: 22, height: 16, rx: 2 },
+    el: "rect", a: { x: 39, y: 37, width: 22, height: 16, rx: 2 },
     zone:  { front: "abdomen", back: "back"    },
     label: { front: { ru: "Живот",  en: "Abdomen",  kk: "Іш"   },
              back:  { ru: "Спина",  en: "Mid back", kk: "Арқа" } },
@@ -70,7 +70,7 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Pelvis / hips y≈63-80 ─────────────────────────────────────────────────
   { id: "pelvis",
-    el: "path", a: { d: "M39,63 L61,63 L64,80 L36,80 Z" },
+    el: "path", a: { d: "M39,53 L61,53 L64,70 L36,70 Z" },
     zone:  { front: "abdomen", back: "back"    },
     label: { front: { ru: "Таз / Бёдра", en: "Pelvis / Hips", kk: "Жамбас"  },
              back:  { ru: "Поясница",    en: "Lower back",    kk: "Бел"     } },
@@ -78,14 +78,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Forearms (elbow to wrist) — cx ≈ 29 / 71, cy ≈ 55 ────────────────────
   { id: "farm_l",
-    el: "ellipse", a: { cx: 71, cy: 62, rx: 5.5, ry: 11 },
+    el: "ellipse", a: { cx: 71, cy: 52, rx: 5.5, ry: 11 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Левое предплечье",  en: "Left forearm",  kk: "Сол білек" },
              back:  { ru: "Левое предплечье",  en: "Left forearm",  kk: "Сол білек" } },
     normX: 0.71, normY: 0.413 },
 
   { id: "farm_r",
-    el: "ellipse", a: { cx: 29, cy: 62, rx: 5.5, ry: 11 },
+    el: "ellipse", a: { cx: 29, cy: 52, rx: 5.5, ry: 11 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Правое предплечье", en: "Right forearm", kk: "Оң білек"  },
              back:  { ru: "Правое предплечье", en: "Right forearm", kk: "Оң білек"  } },
@@ -93,14 +93,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Hands — cx ≈ 28 / 72, cy ≈ 72 ────────────────────────────────────────
   { id: "hand_l",
-    el: "ellipse", a: { cx: 76, cy: 85, rx: 6, ry: 6.5 },
+    el: "ellipse", a: { cx: 76, cy: 75, rx: 6, ry: 6.5 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Левая кисть",  en: "Left hand",  kk: "Сол қол" },
              back:  { ru: "Левая кисть",  en: "Left hand",  kk: "Сол қол" } },
     normX: 0.76, normY: 0.567 },
 
   { id: "hand_r",
-    el: "ellipse", a: { cx: 24, cy: 85, rx: 6, ry: 6.5 },
+    el: "ellipse", a: { cx: 24, cy: 75, rx: 6, ry: 6.5 },
     zone:  { front: "arms", back: "arms" },
     label: { front: { ru: "Правая кисть", en: "Right hand", kk: "Оң қол"  },
              back:  { ru: "Правая кисть", en: "Right hand", kk: "Оң қол"  } },
@@ -108,14 +108,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Thighs — y≈80-103 ─────────────────────────────────────────────────────
   { id: "thigh_l",
-    el: "ellipse", a: { cx: 57, cy: 92, rx: 9, ry: 11 },
+    el: "ellipse", a: { cx: 57, cy: 82, rx: 9, ry: 11 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Левое бедро",  en: "Left thigh",  kk: "Сол сан" },
              back:  { ru: "Левое бедро",  en: "Left thigh",  kk: "Сол сан" } },
     normX: 0.57, normY: 0.613 },
 
   { id: "thigh_r",
-    el: "ellipse", a: { cx: 43, cy: 92, rx: 9, ry: 11 },
+    el: "ellipse", a: { cx: 43, cy: 82, rx: 9, ry: 11 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Правое бедро", en: "Right thigh", kk: "Оң сан"  },
              back:  { ru: "Правое бедро", en: "Right thigh", kk: "Оң сан"  } },
@@ -123,14 +123,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Knees — y≈103-111 ─────────────────────────────────────────────────────
   { id: "knee_l",
-    el: "ellipse", a: { cx: 57, cy: 107, rx: 7, ry: 5 },
+    el: "ellipse", a: { cx: 57, cy: 97, rx: 7, ry: 5 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" },
              back:  { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" } },
     normX: 0.57, normY: 0.713 },
 
   { id: "knee_r",
-    el: "ellipse", a: { cx: 43, cy: 107, rx: 7, ry: 5 },
+    el: "ellipse", a: { cx: 43, cy: 97, rx: 7, ry: 5 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  },
              back:  { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  } },
@@ -138,14 +138,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Shins — y≈103-125 ─────────────────────────────────────────────────────────────────
   { id: "shin_l",
-    el: "ellipse", a: { cx: 58, cy: 121, rx: 7.5, ry: 10 },
+    el: "ellipse", a: { cx: 58, cy: 111, rx: 7.5, ry: 10 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Левая голень",  en: "Left shin",  kk: "Сол балтыр" },
              back:  { ru: "Левая голень",  en: "Left shin",  kk: "Сол балтыр" } },
     normX: 0.58, normY: 0.807 },
 
   { id: "shin_r",
-    el: "ellipse", a: { cx: 42, cy: 121, rx: 7.5, ry: 10 },
+    el: "ellipse", a: { cx: 42, cy: 111, rx: 7.5, ry: 10 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Правая голень", en: "Right shin", kk: "Оң балтыр"  },
              back:  { ru: "Правая голень", en: "Right shin", kk: "Оң балтыр"  } },
@@ -153,14 +153,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Feet — y≈126-135 ──────────────────────────────────────────────────────
   { id: "foot_l",
-    el: "ellipse", a: { cx: 59, cy: 138, rx: 9, ry: 5 },
+    el: "ellipse", a: { cx: 59, cy: 128, rx: 9, ry: 5 },
     zone:  { front: "feet", back: "feet" },
     label: { front: { ru: "Левая стопа",  en: "Left foot",  kk: "Сол табан" },
              back:  { ru: "Левая стопа",  en: "Left foot",  kk: "Сол табан" } },
     normX: 0.59, normY: 0.92 },
 
   { id: "foot_r",
-    el: "ellipse", a: { cx: 41, cy: 138, rx: 9, ry: 5 },
+    el: "ellipse", a: { cx: 41, cy: 128, rx: 9, ry: 5 },
     zone:  { front: "feet", back: "feet" },
     label: { front: { ru: "Правая стопа", en: "Right foot", kk: "Оң табан" },
              back:  { ru: "Правая стопа", en: "Right foot", kk: "Оң табан" } },
@@ -168,12 +168,12 @@ const BASE_ZONES: ZoneDef[] = [
 ];
 
 const FEMALE_OV: Record<string, Partial<Record<string, string | number>>> = {
-  uarm_l:  { cx: 67, cy: 36, rx: 5,  ry: 9 },
-  uarm_r:  { cx: 33, cy: 36, rx: 5,  ry: 9 },
-  chest:   { d: "M38,31 Q51,29 62,31 L60,48 L40,48 Z" },
-  pelvis:  { d: "M37,63 L63,63 L67,80 L33,80 Z" },
-  thigh_l: { cx: 58, cy: 92, rx: 10.5, ry: 11 },
-  thigh_r: { cx: 42, cy: 92, rx: 10.5, ry: 11 },
+  uarm_l:  { cx: 67, cy: 26, rx: 5,  ry: 9 },
+  uarm_r:  { cx: 33, cy: 26, rx: 5,  ry: 9 },
+  chest:   { d: "M38,21 Q51,19 62,21 L60,38 L40,38 Z" },
+  pelvis:  { d: "M37,53 L63,53 L67,70 L33,70 Z" },
+  thigh_l: { cx: 58, cy: 82, rx: 10.5, ry: 11 },
+  thigh_r: { cx: 42, cy: 82, rx: 10.5, ry: 11 },
 };
 
 function getZones(gender: Gender): ZoneDef[] {
@@ -314,16 +314,10 @@ export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
             <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant leading-none">
               {T.selected[l]}
             </p>
-            <p className="text-[14px] font-black text-on-surface truncate leading-tight">
+            <p className="text-[14px] font-black text-on-surface leading-tight">
               {pending?.label[side][l] ?? ""}
             </p>
           </div>
-          <button
-            onClick={() => setPending(null)}
-            className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs text-on-surface-variant font-semibold active:scale-95 transition-transform"
-          >
-            {T.change[l]}
-          </button>
           <button
             onClick={handleConfirm}
             className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-white text-sm font-black shadow-sm active:scale-95 transition-all"
@@ -333,15 +327,6 @@ export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
         </div>
       </div>
 
-      {/* Skip */}
-      <div className="flex-shrink-0 px-5 pb-4">
-        <button
-          onClick={onSkip}
-          className="w-full py-2.5 text-on-surface-variant text-sm font-semibold active:scale-[0.98] transition-transform"
-        >
-          {T.skip[l]}
-        </button>
-      </div>
     </div>
   );
 }
