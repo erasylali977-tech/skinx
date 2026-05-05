@@ -123,14 +123,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Knees — y≈103-111 ─────────────────────────────────────────────────────
   { id: "knee_l",
-    el: "ellipse", a: { cx: 57, cy: 97, rx: 7, ry: 5 },
+    el: "ellipse", a: { cx: 57, cy: 105, rx: 7, ry: 5 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" },
              back:  { ru: "Левое колено",  en: "Left knee",  kk: "Сол тізе" } },
     normX: 0.57, normY: 0.713 },
 
   { id: "knee_r",
-    el: "ellipse", a: { cx: 43, cy: 97, rx: 7, ry: 5 },
+    el: "ellipse", a: { cx: 43, cy: 105, rx: 7, ry: 5 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  },
              back:  { ru: "Правое колено", en: "Right knee", kk: "Оң тізе"  } },
@@ -138,14 +138,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Shins — y≈103-125 ─────────────────────────────────────────────────────────────────
   { id: "shin_l",
-    el: "ellipse", a: { cx: 58, cy: 111, rx: 7.5, ry: 10 },
+    el: "ellipse", a: { cx: 58, cy: 121, rx: 7.5, ry: 10 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Левая голень",  en: "Left shin",  kk: "Сол балтыр" },
              back:  { ru: "Левая голень",  en: "Left shin",  kk: "Сол балтыр" } },
     normX: 0.58, normY: 0.807 },
 
   { id: "shin_r",
-    el: "ellipse", a: { cx: 42, cy: 111, rx: 7.5, ry: 10 },
+    el: "ellipse", a: { cx: 42, cy: 121, rx: 7.5, ry: 10 },
     zone:  { front: "legs", back: "legs" },
     label: { front: { ru: "Правая голень", en: "Right shin", kk: "Оң балтыр"  },
              back:  { ru: "Правая голень", en: "Right shin", kk: "Оң балтыр"  } },
@@ -153,14 +153,14 @@ const BASE_ZONES: ZoneDef[] = [
 
   // ── Feet — y≈126-135 ──────────────────────────────────────────────────────
   { id: "foot_l",
-    el: "ellipse", a: { cx: 59, cy: 128, rx: 9, ry: 5 },
+    el: "ellipse", a: { cx: 59, cy: 140, rx: 9, ry: 5 },
     zone:  { front: "feet", back: "feet" },
     label: { front: { ru: "Левая стопа",  en: "Left foot",  kk: "Сол табан" },
              back:  { ru: "Левая стопа",  en: "Left foot",  kk: "Сол табан" } },
     normX: 0.59, normY: 0.92 },
 
   { id: "foot_r",
-    el: "ellipse", a: { cx: 41, cy: 128, rx: 9, ry: 5 },
+    el: "ellipse", a: { cx: 41, cy: 140, rx: 9, ry: 5 },
     zone:  { front: "feet", back: "feet" },
     label: { front: { ru: "Правая стопа", en: "Right foot", kk: "Оң табан" },
              back:  { ru: "Правая стопа", en: "Right foot", kk: "Оң табан" } },
