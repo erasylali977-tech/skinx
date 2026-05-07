@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
+import { trackEvent } from "@/lib/analytics";
 
 const LANG_OPTIONS: { locale: Locale; flag: string; label: string }[] = [
   { locale: "kk", flag: "🇰🇿", label: "Қазақша" },
@@ -121,6 +122,12 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
           });
           if (error) throw error;
         }
+        trackEvent("profile_completed", { 
+          has_age: !!age, 
+          has_sex: !!sex, 
+          has_skin_type: !!skinType, 
+          risk_count: risks.length 
+        });
         router.push("/home");
         router.refresh();
       } catch (e: any) {

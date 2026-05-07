@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { ScanCamera } from "./ScanCamera";
 import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
 import { BodyMapSVG } from "@/components/BodyMapSVG";
+import { trackEvent } from "@/lib/analytics";
 
 // ── Canvas helpers: skin-anomaly detection (shared with loading overlay) ───────
 
@@ -371,6 +372,11 @@ export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) 
         throw new Error(j.error || t.scan.uploadFailed);
       }
       const j = await res.json();
+      trackEvent("scan_completed", { 
+        zone: selectedZone || "none", 
+        side: bodySide,
+        has_zone: !!selectedZone 
+      });
       router.push(`/moles/${j.id}`);
       router.refresh();
     } catch (e: unknown) {
@@ -418,6 +424,7 @@ export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) 
           <BodyMapSVG
             gender={gender}
             onSelect={(zone, normX, normY, side) => {
+              trackEvent("zone_selected", { zone, side });
               setSelectedZone(zone);
               setBodyNormX(normX);
               setBodyNormY(normY);

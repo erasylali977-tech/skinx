@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
+import { trackEvent } from "@/lib/analytics";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
 
@@ -43,6 +44,7 @@ export function SignInForm() {
         });
         if (error) throw error;
       }
+      trackEvent("login_completed", { method: "email" });
       router.replace(next);
     } catch (err: any) {
       setError(err?.message ?? t.common.error);
@@ -73,6 +75,7 @@ export function SignInForm() {
         options: { redirectTo },
       });
       if (error) throw error;
+      trackEvent("login_completed", { method: provider });
     } catch (err: any) {
       setError(err?.message ?? t.common.error);
       setLoading(false);

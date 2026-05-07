@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -6,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { SignOutButton } from "./SignOutButton";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 import { useI18n } from "@/lib/i18n/context";
+import { trackEvent } from "@/lib/analytics";
 
 type Props = {
   email: string;
@@ -48,6 +50,13 @@ function getInitials(name: string | null | undefined, email: string): string {
 
 export function AccountContent({ email, full_name, profile }: Props) {
   const { t } = useI18n();
+
+  useEffect(() => {
+    trackEvent("profile_viewed", { 
+      has_profile: !!profile,
+      has_risk_factors: (profile?.risk_factors?.length ?? 0) > 0
+    });
+  }, [profile]);
 
   function translateSex(val: string | null | undefined): string {
     if (!val) return "—";

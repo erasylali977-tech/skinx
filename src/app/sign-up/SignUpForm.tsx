@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
+import { trackEvent } from "@/lib/analytics";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
 
@@ -32,6 +33,7 @@ export function SignUpForm() {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error || t.common.error);
         }
+        trackEvent("signup_completed", { method: "email" });
         router.replace("/profile");
       } else {
         // Create user server-side with email auto-confirmed, then sign in.
@@ -50,6 +52,7 @@ export function SignUpForm() {
           password,
         });
         if (signInError) throw signInError;
+        trackEvent("signup_completed", { method: "email" });
         router.replace("/home");
       }
     } catch (err: any) {

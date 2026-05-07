@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -8,6 +9,7 @@ import { formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
 import { getZoneDisplayLabel } from "@/lib/zoneDetails";
+import { trackEvent } from "@/lib/analytics";
 
 type Props = {
   scans: Scan[];
@@ -22,6 +24,10 @@ const RISK_COLOR: Record<string, string> = {
 
 export function MolesContent({ scans, thumbs }: Props) {
   const { t, locale } = useI18n();
+
+  useEffect(() => {
+    trackEvent("moles_viewed", { scan_count: scans.length });
+  }, [scans.length]);
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-32" style={{ paddingTop: "calc(5rem + env(safe-area-inset-top))" }}>

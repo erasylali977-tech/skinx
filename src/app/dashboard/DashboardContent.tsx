@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
@@ -7,6 +8,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { formatDate } from "@/lib/utils";
 import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 import type { Scan } from "@/lib/types";
+import { trackEvent } from "@/lib/analytics";
 
 type Props = {
   scans: Scan[];
@@ -15,6 +17,10 @@ type Props = {
 
 export function DashboardContent({ scans, thumbs }: Props) {
   const { t, locale } = useI18n();
+
+  useEffect(() => {
+    trackEvent("dashboard_viewed", { scan_count: scans.length });
+  }, [scans.length]);
 
   const total = scans.length;
   const stable = scans.filter((s) => s.risk_level === "low").length;
