@@ -15,13 +15,17 @@ export default async function HomePage() {
   if (MOCK) {
     profile = mockGetProfile(user.id);
   } else {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-    profile = data;
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      profile = data;
+    } catch {
+      profile = null;
+    }
   }
 
   if (!profile?.onboarded) redirect("/profile");

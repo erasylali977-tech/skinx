@@ -19,9 +19,12 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      // Claim clients FIRST so pages switch to new SW before old cache is gone.
+      // Deleting old caches first causes ChunkLoadError: page still has old HTML
+      // referencing old chunk hashes, but cache is already wiped.
+      await self.clients.claim();
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
-      await self.clients.claim();
     })(),
   );
 });
@@ -31,6 +34,8 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Never intercept the SW script or manifest — browser must always fetch these fresh.
+  if (url.pathname === "/sw.js" || url.pathname === "/manifest.webmanifest") return;
 
   // Network-first for navigation
   if (req.mode === "navigate") {
@@ -67,7 +72,11 @@ self.addEventListener("fetch", (event) => {
           return net;
         } catch (_) {
           const cache = await caches.open(CACHE);
-          return (await cache.match(req)) || Response.error();
+          const cached = await cache.match(req);
+          // Do NOT return Response.error() — it triggers "Response served by SW is an error".
+          // Instead fall back to a real network fetch so the browser sees the real error
+          // and ChunkLoadError fires, which can be caught and trigger a page reload.
+          return cached ?? fetch(req.clone());
         }
       })(),
     );
