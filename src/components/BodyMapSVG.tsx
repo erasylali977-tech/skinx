@@ -222,7 +222,7 @@ const T = {
 
 interface Props {
   gender:   "male" | "female";
-  onSelect: (zone: ImageZoneId, normX: number, normY: number, side: Side) => void;
+  onSelect: (zone: string, normX: number, normY: number, side: Side) => void;
   onSkip:   () => void;
 }
 
@@ -237,7 +237,7 @@ export function BodyMapSVG({ gender, onSelect, onSkip }: Props) {
 
   function handleConfirm() {
     if (!pending) return;
-    onSelect(pending.zone[side], pending.normX, pending.normY, side);
+    onSelect(pending.id, pending.normX, pending.normY, side);
     setPending(null);
   }
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
 import { ScanCamera } from "./ScanCamera";
-import { type ImageZoneId, ZONE_DETAIL_MAP } from "@/lib/zoneDetails";
+import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 import { BodyMapSVG } from "@/components/BodyMapSVG";
 import { trackEvent } from "@/lib/analytics";
 
@@ -320,7 +320,7 @@ export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) 
   const { isDark, toggle: toggleTheme } = useThemeToggle();
 
   const [step,         setStep]         = useState<ScanStep>("zones");
-  const [selectedZone,    setSelectedZone]    = useState<ImageZoneId | null>(null);
+  const [selectedZone,    setSelectedZone]    = useState<string | null>(null);
   const [bodyNormX,    setBodyNormX]    = useState<number | null>(null);
   const [bodyNormY,    setBodyNormY]    = useState<number | null>(null);
   const [bodySide,     setBodySide]     = useState<"front" | "back">("front");
@@ -570,7 +570,7 @@ export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) 
             </div>
             <div className="flex-1 text-left">
               <p className="text-xs font-semibold leading-none text-on-surface">
-                {selectedZone ? ZONE_DETAIL_MAP[selectedZone].name[locale] : t.scan.selectZone}
+                {selectedZone ? getZoneDisplayLabel(selectedZone, locale) : t.scan.selectZone}
               </p>
               <p className={`text-[10px] mt-0.5 ${selectedZone ? "text-emerald-500/60" : "text-on-surface-variant/60"}`}>
                 {selectedZone ? t.scan.selectZoneHint : t.scan.tapBodyArea}
