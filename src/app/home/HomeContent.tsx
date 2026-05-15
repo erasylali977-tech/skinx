@@ -36,6 +36,23 @@ const RISK_COLORS = {
   high:   { bg: "bg-red-500/15",     text: "text-red-500",     dot: "bg-red-500",     label: { ru: "Высокий",  en: "High",   kk: "Жоғары" } },
 };
 
+function calcHealthScore(scans: Scan[]): number | null {
+  if (scans.length === 0) return null;
+  const penalty = scans.reduce((acc, s) => {
+    if (s.risk_level === "high")   return acc + 20;
+    if (s.risk_level === "medium") return acc + 8;
+    return acc + 1;
+  }, 0);
+  return Math.max(0, Math.round(100 - penalty / Math.sqrt(scans.length)));
+}
+
+function scoreLabel(score: number, t: { home: { healthExcellent: string; healthGood: string; healthFair: string; healthReview: string } }) {
+  if (score >= 80) return { text: t.home.healthExcellent, color: "text-emerald-400", bg: "bg-emerald-400/15", ring: "ring-emerald-400/40", track: "bg-emerald-400" };
+  if (score >= 60) return { text: t.home.healthGood,      color: "text-blue-400",    bg: "bg-blue-400/15",    ring: "ring-blue-400/40",    track: "bg-blue-400"    };
+  if (score >= 40) return { text: t.home.healthFair,      color: "text-amber-400",   bg: "bg-amber-400/15",   ring: "ring-amber-400/40",   track: "bg-amber-400"   };
+  return              { text: t.home.healthReview,     color: "text-red-400",     bg: "bg-red-400/15",     ring: "ring-red-400/40",     track: "bg-red-400"     };
+}
+
 export function HomeContent({ firstName, scans, thumbs }: Props) {
   const { t, locale } = useI18n();
   const { resolvedTheme, setTheme } = useTheme();
@@ -46,9 +63,11 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
     setTimeGreeting(getTimeGreeting(locale, new Date().getHours()));
   }, [locale]);
 
-  const lastScan   = scans[0];
-  const totalScans = scans.length;
-  const lastRC     = lastScan ? RISK_COLORS[lastScan.risk_level] : null;
+  const lastScan    = scans[0];
+  const totalScans  = scans.length;
+  const lastRC      = lastScan ? RISK_COLORS[lastScan.risk_level] : null;
+  const healthScore = calcHealthScore(scans);
+  const scoreMeta   = healthScore !== null ? scoreLabel(healthScore, t) : null;
 
   return (
     <div className="min-h-screen bg-background text-on-surface pb-28">
@@ -142,6 +161,48 @@ export function HomeContent({ firstName, scans, thumbs }: Props) {
             </div>
           </section>
         )}
+
+        {/* ── Skin Health Score ── */}
+        <section className="px-4 mb-5">
+          <div className={`rounded-[20px] p-4 flex items-center gap-4 ${scoreMeta ? scoreMeta.bg : "bg-surface-container"}`}>
+            {/* Circular progress */}
+            <div className={`relative w-16 h-16 flex-shrink-0 rounded-full ring-2 ${scoreMeta ? scoreMeta.ring : "ring-white/10"} flex items-center justify-center`}>
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeWidth="4" className="text-white/10" />
+                {healthScore !== null && (
+                  <circle
+                    cx="32" cy="32" r="27" fill="none"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    className={scoreMeta!.track}
+                    strokeDasharray={`${(healthScore / 100) * 169.6} 169.6`}
+                  />
+                )}
+              </svg>
+              <span className={`relative text-lg font-black ${scoreMeta ? scoreMeta.color : "text-on-surface-variant"}`}>
+                {healthScore ?? "—"}
+              </span>
+            </div>
+
+            {/* Labels */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-0.5">
+                {t.home.healthScore}
+              </p>
+              <p className={`text-[17px] font-black leading-tight ${scoreMeta ? scoreMeta.color : "text-on-surface-variant"}`}>
+                {scoreMeta ? scoreMeta.text : t.home.healthScoreNone}
+              </p>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                {healthScore !== null ? t.home.healthScoreHint : t.home.healthScoreNone}
+              </p>
+            </div>
+
+            {/* Arrow to dashboard */}
+            <Link href="/dashboard" className="flex-shrink-0 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+              <Icon name="arrow_forward" className={`text-sm ${scoreMeta ? scoreMeta.color : "text-on-surface-variant"}`} />
+            </Link>
+          </div>
+        </section>
 
         {/* ── Recent Scans ── */}
         <section className="px-4">

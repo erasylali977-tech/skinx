@@ -190,25 +190,27 @@ export function ScanCamera({ onCapture, onClose }: Props) {
   }, [facing, startStream]);
 
   // ── Derived detection state ────────────────────────────────────────────
-  const isDark    = det.brightness < 60;
-  const isBright  = det.brightness > 215;
-  const isBlurry  = det.sharpness  < 6;
-  const skinOk    = det.skinPct    > 15;
-  const ready     = skinOk && !isBlurry && !isDark && !isBright;
+  const isDark      = det.brightness < 60;
+  const isBright    = det.brightness > 215;
+  const isBlurry    = det.sharpness  < 6;
+  const skinOk      = det.skinPct    > 15;
+  const tooFarAway  = !skinOk && !isDark && !isBright && !isBlurry && det.skinPct < 5;
+  const ready       = skinOk && !isBlurry && !isDark && !isBright;
 
   const statusText =
-    isDark   ? t.scan.tooDark
-    : isBright ? t.scan.tooBright
-    : isBlurry ? t.scan.blurry
-    : skinOk   ? t.scan.skinDetected
-    :            t.scan.alignSkin;
+    isDark      ? t.scan.tooDark
+    : isBright  ? t.scan.tooBright
+    : isBlurry  ? t.scan.blurry
+    : tooFarAway ? t.scan.moveCloser
+    : skinOk    ? t.scan.skinDetected
+    :              t.scan.alignSkin;
 
   const statusColor = ready
-    ? "text-primary/80"
-    : (isDark || isBright || isBlurry) ? "text-amber-400"
+    ? "text-emerald-400"
+    : (isDark || isBright || isBlurry || tooFarAway) ? "text-amber-400"
     : "text-white/70";
 
-  const frameColor = ready ? "border-primary/60" : "border-white/25";
+  const frameColor = ready ? "border-emerald-400/70" : tooFarAway ? "border-amber-400/50" : "border-white/25";
 
   const shutterStyle = ready
     ? "bg-primary-gradient shadow-primary-glow ring-2 ring-primary/30"
@@ -368,16 +370,38 @@ export function ScanCamera({ onCapture, onClose }: Props) {
           <div className={`absolute bottom-0 left-0 w-9 h-9 border-b-[3px] border-l-[3px] ${frameColor} rounded-bl-[2rem] transition-colors duration-500`} />
           <div className={`absolute bottom-0 right-0 w-9 h-9 border-b-[3px] border-r-[3px] ${frameColor} rounded-br-[2rem] transition-colors duration-500`} />
 
+          {/* "Move closer" animated arrow */}
+          {tooFarAway && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-1 animate-bounce">
+                <Icon name="arrow_downward" className="text-amber-400 text-3xl drop-shadow-lg" />
+                <Icon name="arrow_downward" className="text-amber-400/50 text-xl drop-shadow-lg" />
+              </div>
+            </div>
+          )}
+
+          {/* Ready checkmark */}
+          {ready && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-14 h-14 rounded-full bg-emerald-400/20 flex items-center justify-center">
+                <Icon name="check_circle" filled className="text-emerald-400 text-4xl drop-shadow-lg" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status badge */}
-        <div className="flex items-center gap-2.5 bg-black/55 backdrop-blur-md px-5 py-2.5 rounded-full">
+        <div className={`flex items-center gap-2.5 backdrop-blur-md px-5 py-2.5 rounded-full transition-colors duration-300 ${
+          ready ? "bg-emerald-500/20" : tooFarAway || isDark || isBright || isBlurry ? "bg-amber-500/15" : "bg-black/55"
+        }`}>
           {ready ? (
-            <span className="w-2 h-2 rounded-full bg-primary/50 animate-pulse flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+          ) : (tooFarAway || isDark || isBright || isBlurry) ? (
+            <Icon name="warning" className="text-amber-400 text-sm flex-shrink-0" />
           ) : (
             <span className="w-2 h-2 rounded-full bg-white/30 flex-shrink-0" />
           )}
-          <span className={`text-sm font-medium transition-colors duration-300 ${statusColor}`}>
+          <span className={`text-sm font-semibold transition-colors duration-300 ${statusColor}`}>
             {statusText}
           </span>
         </div>
