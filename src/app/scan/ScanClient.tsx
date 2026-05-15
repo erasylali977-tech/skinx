@@ -554,19 +554,13 @@ export function ScanClient({ gender = "male" }: { gender?: "male" | "female" }) 
                 : "bg-surface-container border-outline-variant/30 text-on-surface-variant"
             }`}
           >
-            <div className={`w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 ${!selectedZone && "opacity-40"}`}>
-              {selectedZone ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/assets/images/${gender}/${selectedZone}.jpg`}
-                  alt=""
-                  className="w-full h-full object-cover object-top"
-                />
-              ) : (
-                <div className="w-full h-full bg-surface-container-high flex items-center justify-center">
-                  <Icon name="body_system" className="text-xs" />
-                </div>
-              )}
+            <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ${
+              selectedZone ? "bg-emerald-500/20" : "bg-surface-container-high opacity-40"
+            }`}>
+              <Icon
+                name="body_system"
+                className={`text-base ${selectedZone ? "text-emerald-500" : "text-on-surface-variant"}`}
+              />
             </div>
             <div className="flex-1 text-left">
               <p className="text-xs font-semibold leading-none text-on-surface">
