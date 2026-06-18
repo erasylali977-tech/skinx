@@ -65,13 +65,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Persist full_name to the profiles table (the trigger only creates the row
-  // with id, leaving full_name NULL).
+  // with id, leaving full_name NULL). Non-fatal but worth logging.
   if (full_name && data.user) {
-    await admin
+    const { error: profileErr } = await admin
       .from("profiles")
       .update({ full_name: full_name.trim() })
-      .eq("id", data.user.id)
-      .then(() => {}); // fire-and-forget, non-fatal
+      .eq("id", data.user.id);
+    if (profileErr) {
+      console.error("[auth/signup] Failed to set profile full_name:", profileErr.message);
+    }
   }
 
   return NextResponse.json({ user: data.user });

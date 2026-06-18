@@ -16,7 +16,11 @@ export const maxDuration = 10;
 
 export async function POST(req: NextRequest) {
   if (!KEY) {
-    return NextResponse.json({ predictions: [] });
+    console.warn("[detect] ROBOFLOW_API_KEY is not set — skipping detection");
+    return NextResponse.json(
+      { predictions: [], error: "Detection service not configured" },
+      { status: 503 },
+    );
   }
 
   const zone  = new URL(req.url).searchParams.get("zone") ?? "";
@@ -26,8 +30,12 @@ export async function POST(req: NextRequest) {
   try {
     const buf = await req.arrayBuffer();
     base64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return NextResponse.json({ predictions: [] }, { status: 400 });
+  } catch (e) {
+    console.error("[detect] Failed to read request body:", e);
+    return NextResponse.json(
+      { predictions: [], error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -41,12 +49,21 @@ export async function POST(req: NextRequest) {
     );
 
     if (!rfRes.ok) {
-      return NextResponse.json({ predictions: [] }, { status: rfRes.status });
+      const errText = await rfRes.text().catch(() => rfRes.statusText);
+      console.error(`[detect] Roboflow API error ${rfRes.status}:`, errText.slice(0, 200));
+      return NextResponse.json(
+        { predictions: [], error: `Detection failed (${rfRes.status})` },
+        { status: rfRes.status },
+      );
     }
 
     const data = await rfRes.json();
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ predictions: [] }, { status: 500 });
+  } catch (e) {
+    console.error("[detect] Roboflow request failed:", e);
+    return NextResponse.json(
+      { predictions: [], error: "Detection service unavailable" },
+      { status: 500 },
+    );
   }
 }

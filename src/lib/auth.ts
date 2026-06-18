@@ -25,7 +25,8 @@ export async function getCurrentUser(): Promise<{
       email: user.email ?? "",
       full_name: (user.user_metadata?.full_name as string) ?? null,
     };
-  } catch {
+  } catch (e) {
+    console.error("[auth] getCurrentUser failed:", e);
     return null;
   }
 }
