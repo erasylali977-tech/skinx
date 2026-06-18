@@ -6,19 +6,22 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 export async function POST() {
-  const res = NextResponse.json({ ok: true });
-
   if (MOCK) {
+    const res = NextResponse.json({ ok: true });
     res.cookies.set(MOCK_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
   }
 
   try {
     const supabase = createClient();
-    // Also clears sb-*-auth-token cookies via the SSR cookie adapter.
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("[auth/signout] signOut error:", error.message);
+      return NextResponse.json({ error: "Sign-out failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[auth/signout] error:", e);
+    return NextResponse.json({ error: "Sign-out failed" }, { status: 500 });
   }
-  return res;
 }

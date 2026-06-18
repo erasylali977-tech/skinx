@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
   }
   scanCounts.set(user.id, { date: today, count: todayCount + 1 });
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+  }
   const file = form.get("image");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "image required" }, { status: 400 });
@@ -198,11 +203,12 @@ export async function GET() {
   if (MOCK) return NextResponse.json({ scans: mockListScans(user.id) });
   try {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("scans")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ scans: data ?? [] });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });

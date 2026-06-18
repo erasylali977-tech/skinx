@@ -44,13 +44,19 @@ export async function DELETE(
 
   try {
     const supabase = createClient();
-    const { data: scan } = await supabase
+    const { data: scan, error: selectErr } = await supabase
       .from("scans")
       .select("image_path")
       .eq("id", params.id)
       .maybeSingle();
+    if (selectErr) {
+      console.error("[scans/delete] Failed to look up scan:", selectErr.message);
+    }
     if (scan?.image_path) {
-      await supabase.storage.from("scans").remove([scan.image_path]);
+      const { error: storageErr } = await supabase.storage.from("scans").remove([scan.image_path]);
+      if (storageErr) {
+        console.error("[scans/delete] Failed to remove image from storage:", storageErr.message);
+      }
     }
     const { error } = await supabase.from("scans").delete().eq("id", params.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

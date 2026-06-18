@@ -73,8 +73,9 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setAvatar(data.publicUrl + `?t=${Date.now()}`);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Avatar upload failed:", e);
+      setError((e as { message?: string })?.message ?? "Avatar upload failed");
     } finally {
       setUploadingAvatar(false);
     }

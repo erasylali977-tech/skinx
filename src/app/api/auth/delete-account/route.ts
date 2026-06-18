@@ -13,11 +13,14 @@ export async function POST() {
     return res;
   }
 
+  const warnings: string[] = [];
+
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userErr || !user) {
+      console.error("[auth/delete-account] getUser failed:", userErr?.message);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,27 +28,47 @@ export async function POST() {
     const serviceClient = createServiceClient();
 
     // 1. Get all scans to delete images from storage
-    const { data: scans } = await supabase
+    const { data: scans, error: scansErr } = await supabase
       .from("scans")
       .select("image_path")
       .eq("user_id", userId);
+    if (scansErr) {
+      console.error("[auth/delete-account] Failed to fetch scans:", scansErr.message);
+      warnings.push("Could not fetch scans for cleanup");
+    }
 
     // 2. Delete images from storage
     if (scans && scans.length > 0) {
       const imagePaths = scans.map(s => s.image_path).filter(Boolean);
       if (imagePaths.length > 0) {
-        await serviceClient.storage.from("scans").remove(imagePaths);
+        const { error: storageErr } = await serviceClient.storage.from("scans").remove(imagePaths);
+        if (storageErr) {
+          console.error("[auth/delete-account] Failed to remove images:", storageErr.message);
+          warnings.push("Some images may not have been deleted");
+        }
       }
     }
 
     // 3. Delete scans from DB (cascade should handle this, but being explicit)
-    await supabase.from("scans").delete().eq("user_id", userId);
+    const { error: delScansErr } = await supabase.from("scans").delete().eq("user_id", userId);
+    if (delScansErr) {
+      console.error("[auth/delete-account] Failed to delete scans:", delScansErr.message);
+      warnings.push("Scan records may not have been deleted");
+    }
 
     // 4. Delete profile (cascade should handle this too)
-    await supabase.from("profiles").delete().eq("id", userId);
+    const { error: delProfileErr } = await supabase.from("profiles").delete().eq("id", userId);
+    if (delProfileErr) {
+      console.error("[auth/delete-account] Failed to delete profile:", delProfileErr.message);
+      warnings.push("Profile may not have been deleted");
+    }
 
-    // 5. Delete auth user (requires service role)
-    await serviceClient.auth.admin.deleteUser(userId);
+    // 5. Delete auth user (requires service role) — this is critical
+    const { error: delUserErr } = await serviceClient.auth.admin.deleteUser(userId);
+    if (delUserErr) {
+      console.error("[auth/delete-account] Failed to delete auth user:", delUserErr.message);
+      return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+    }
 
     // 6. Clear auth cookies
     await supabase.auth.signOut();
@@ -55,5 +78,8 @@ export async function POST() {
     return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
   }
 
+  if (warnings.length > 0) {
+    console.warn("[auth/delete-account] Completed with warnings:", warnings);
+  }
   return res;
 }
