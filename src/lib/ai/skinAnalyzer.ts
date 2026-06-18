@@ -194,6 +194,68 @@ function clamp(v: unknown, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
+function stripCodeFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+}
+
+function parseAnalysisJson(jsonText: string, providerLabel: string): AnalysisResult {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(`${providerLabel} returned invalid JSON: ` + jsonText.slice(0, 120));
+  }
+
+  const raw = parsed as {
+    abcde?: Record<string, unknown>;
+    riskScore?: unknown; riskLevel?: unknown;
+    status?: unknown; notes?: unknown; summary?: unknown;
+    differentialDiagnosis?: unknown[];
+    lesionBbox?: Record<string, unknown>;
+  };
+
+  const abcde: AbcdeScores = {
+    asymmetry: clamp(raw.abcde?.asymmetry),
+    border:    clamp(raw.abcde?.border),
+    color:     clamp(raw.abcde?.color),
+    diameter:  clamp(raw.abcde?.diameter),
+    evolution: clamp(raw.abcde?.evolution),
+  };
+
+  const riskScore = clamp(
+    raw.riskScore ??
+    Math.round((abcde.asymmetry + abcde.border + abcde.color + abcde.diameter + abcde.evolution) / 5),
+  );
+  const riskLevel: RiskLevel = riskScore >= 60 ? "high" : riskScore >= 35 ? "medium" : "low";
+  const status =
+    typeof raw.status === "string" && ["stable", "review", "new"].includes(raw.status)
+      ? (raw.status as "stable" | "review" | "new")
+      : riskLevel === "high" ? "review" : "stable";
+
+  const differentialDiagnosis: DifferentialItem[] = Array.isArray(raw.differentialDiagnosis)
+    ? (raw.differentialDiagnosis as Record<string, unknown>[]).slice(0, 3).map(it => ({
+        name: typeof it.name === "string" ? it.name : "Unknown",
+        probability: clamp(typeof it.probability === "number" ? it.probability : 0),
+      })).filter(it => it.name !== "Unknown")
+    : [];
+
+  const rb = raw.lesionBbox;
+  const lesionBbox: LesionBbox | undefined = rb &&
+    typeof rb.x === "number" && typeof rb.y === "number" &&
+    typeof rb.w === "number" && typeof rb.h === "number"
+    ? { x: Math.max(0, Math.min(1, rb.x)), y: Math.max(0, Math.min(1, rb.y)),
+        w: Math.max(0.05, Math.min(1, rb.w)), h: Math.max(0.05, Math.min(1, rb.h)) }
+    : undefined;
+
+  return {
+    riskScore, riskLevel, status, abcde,
+    notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
+    summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
+    differentialDiagnosis,
+    lesionBbox,
+  };
+}
+
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export class GeminiSkinAnalyzer implements SkinAnalyzer {
@@ -247,64 +309,7 @@ export class GeminiSkinAnalyzer implements SkinAnalyzer {
     const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
-    // Strip markdown code fences Gemini sometimes wraps around JSON
-    const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      throw new Error("Gemini returned invalid JSON: " + text.slice(0, 120));
-    }
-
-    const raw = parsed as {
-      abcde?: Record<string, unknown>;
-      riskScore?: unknown; riskLevel?: unknown;
-      status?: unknown; notes?: unknown; summary?: unknown;
-      differentialDiagnosis?: unknown[];
-      lesionBbox?: Record<string, unknown>;
-    };
-
-    const abcde: AbcdeScores = {
-      asymmetry: clamp(raw.abcde?.asymmetry),
-      border:    clamp(raw.abcde?.border),
-      color:     clamp(raw.abcde?.color),
-      diameter:  clamp(raw.abcde?.diameter),
-      evolution: clamp(raw.abcde?.evolution),
-    };
-
-    const riskScore = clamp(
-      raw.riskScore ??
-      Math.round((abcde.asymmetry + abcde.border + abcde.color + abcde.diameter + abcde.evolution) / 5),
-    );
-    const riskLevel: RiskLevel = riskScore >= 60 ? "high" : riskScore >= 35 ? "medium" : "low";
-    const status =
-      typeof raw.status === "string" && ["stable", "review", "new"].includes(raw.status)
-        ? (raw.status as "stable" | "review" | "new")
-        : riskLevel === "high" ? "review" : "stable";
-
-    const differentialDiagnosis: DifferentialItem[] = Array.isArray(raw.differentialDiagnosis)
-      ? (raw.differentialDiagnosis as Record<string, unknown>[]).slice(0, 3).map(it => ({
-          name: typeof it.name === "string" ? it.name : "Unknown",
-          probability: clamp(typeof it.probability === "number" ? it.probability : 0),
-        })).filter(it => it.name !== "Unknown")
-      : [];
-
-    const rb = raw.lesionBbox;
-    const lesionBbox: LesionBbox | undefined = rb &&
-      typeof rb.x === "number" && typeof rb.y === "number" &&
-      typeof rb.w === "number" && typeof rb.h === "number"
-      ? { x: Math.max(0, Math.min(1, rb.x)), y: Math.max(0, Math.min(1, rb.y)),
-          w: Math.max(0.05, Math.min(1, rb.w)), h: Math.max(0.05, Math.min(1, rb.h)) }
-      : undefined;
-
-    return {
-      riskScore, riskLevel, status, abcde,
-      notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
-      summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
-      differentialDiagnosis,
-      lesionBbox,
-    };
+    return parseAnalysisJson(stripCodeFences(text), "Gemini");
   }
 }
 
@@ -361,62 +366,7 @@ export class GroqSkinAnalyzer implements SkinAnalyzer {
     const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
     const text = data.choices?.[0]?.message?.content ?? "";
 
-    const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      throw new Error("Groq returned invalid JSON: " + text.slice(0, 120));
-    }
-
-    const raw = parsed as {
-      abcde?: Record<string, unknown>;
-      riskScore?: unknown; riskLevel?: unknown;
-      status?: unknown; notes?: unknown; summary?: unknown;
-      differentialDiagnosis?: unknown[];
-      lesionBbox?: Record<string, unknown>;
-    };
-
-    const abcde: AbcdeScores = {
-      asymmetry: clamp(raw.abcde?.asymmetry),
-      border:    clamp(raw.abcde?.border),
-      color:     clamp(raw.abcde?.color),
-      diameter:  clamp(raw.abcde?.diameter),
-      evolution: clamp(raw.abcde?.evolution),
-    };
-    const riskScore = clamp(
-      raw.riskScore ??
-      Math.round((abcde.asymmetry + abcde.border + abcde.color + abcde.diameter + abcde.evolution) / 5),
-    );
-    const riskLevel: RiskLevel = riskScore >= 60 ? "high" : riskScore >= 35 ? "medium" : "low";
-    const status =
-      typeof raw.status === "string" && ["stable", "review", "new"].includes(raw.status)
-        ? (raw.status as "stable" | "review" | "new")
-        : riskLevel === "high" ? "review" : "stable";
-
-    const differentialDiagnosis: DifferentialItem[] = Array.isArray(raw.differentialDiagnosis)
-      ? (raw.differentialDiagnosis as Record<string, unknown>[]).slice(0, 3).map(it => ({
-          name: typeof it.name === "string" ? it.name : "Unknown",
-          probability: clamp(typeof it.probability === "number" ? it.probability : 0),
-        })).filter(it => it.name !== "Unknown")
-      : [];
-
-    const rb = raw.lesionBbox;
-    const lesionBbox: LesionBbox | undefined = rb &&
-      typeof rb.x === "number" && typeof rb.y === "number" &&
-      typeof rb.w === "number" && typeof rb.h === "number"
-      ? { x: Math.max(0, Math.min(1, rb.x)), y: Math.max(0, Math.min(1, rb.y)),
-          w: Math.max(0.05, Math.min(1, rb.w)), h: Math.max(0.05, Math.min(1, rb.h)) }
-      : undefined;
-
-    return {
-      riskScore, riskLevel, status, abcde,
-      notes:   typeof raw.notes   === "string" ? raw.notes   : "Analysis complete.",
-      summary: typeof raw.summary === "string" ? raw.summary : "Analysis complete.",
-      differentialDiagnosis,
-      lesionBbox,
-    };
+    return parseAnalysisJson(stripCodeFences(text), "Groq");
   }
 }
 

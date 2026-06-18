@@ -48,3 +48,15 @@ export function riskLabel(level: "low" | "medium" | "high") {
       return "Stable";
   }
 }
+
+export const RISK_DOT_COLOR: Record<string, string> = {
+  low:    "bg-emerald-500",
+  medium: "bg-amber-400",
+  high:   "bg-red-500",
+};
+
+export const RISK_BADGE_CLASS: Record<string, string> = {
+  low:    "bg-emerald-500/90 text-white",
+  medium: "bg-amber-400/90 text-black",
+  high:   "bg-red-500/90 text-white",
+};

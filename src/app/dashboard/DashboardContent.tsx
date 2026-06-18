@@ -5,7 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
-import { formatDate } from "@/lib/utils";
+import { formatDate, RISK_DOT_COLOR } from "@/lib/utils";
 import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 import type { Scan } from "@/lib/types";
 import { trackEvent } from "@/lib/analytics";
@@ -104,7 +104,7 @@ export function DashboardContent({ scans, thumbs }: Props) {
                   )}
                   <div className="absolute top-3 left-3 bg-surface-container-lowest/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
                     <span
-                      className={`w-2 h-2 rounded-full ${s.risk_level === "high" ? "bg-orange-500" : s.risk_level === "medium" ? "bg-amber-400" : "bg-emerald-500"}`}
+                      className={`w-2 h-2 rounded-full ${RISK_DOT_COLOR[s.risk_level]}`}
                     />
                     <span className="text-xs font-semibold">
                       {riskLabel(s.risk_level)}

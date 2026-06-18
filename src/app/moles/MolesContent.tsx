@@ -5,8 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/context";
-import { formatDateTime } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatDateTime, cn, RISK_DOT_COLOR } from "@/lib/utils";
 import type { Scan } from "@/lib/types";
 import { getZoneDisplayLabel } from "@/lib/zoneDetails";
 import { trackEvent } from "@/lib/analytics";
@@ -16,16 +15,10 @@ type Props = {
   thumbs: (string | null)[];
 };
 
-const RISK_COLOR: Record<string, string> = {
+const RISK_PILL: Record<string, string> = {
   low:    "bg-tertiary-container text-on-tertiary-container",
   medium: "bg-primary-container text-on-primary-container",
   high:   "bg-error-container text-on-error-container",
-};
-
-const RISK_DOT: Record<string, string> = {
-  low:    "bg-emerald-400",
-  medium: "bg-amber-400",
-  high:   "bg-red-400",
 };
 
 const DAY_LABELS = {
@@ -171,7 +164,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                   {hasScans && !isSelected && (
                     <span className={cn(
                       "w-1.5 h-1.5 rounded-full mt-0.5",
-                      RISK_DOT[riskLevel ?? "low"]
+                      RISK_DOT_COLOR[riskLevel ?? "low"]
                     )} />
                   )}
                   {hasScans && isSelected && (
@@ -242,7 +235,7 @@ export function MolesContent({ scans, thumbs }: Props) {
                     </h3>
                     <span className={cn(
                       "px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0",
-                      RISK_COLOR[s.risk_level] ?? RISK_COLOR.low,
+                      RISK_PILL[s.risk_level] ?? RISK_PILL.low,
                     )}>
                       {t.riskLevels[s.risk_level]}
                     </span>
