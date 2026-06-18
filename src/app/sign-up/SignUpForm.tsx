@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/context";
 import { trackEvent } from "@/lib/analytics";
-
-const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
+import { MOCK } from "@/lib/mock";
 
 export function SignUpForm() {
   const router = useRouter();

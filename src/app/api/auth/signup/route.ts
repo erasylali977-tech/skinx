@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createAdminBase } from "@supabase/supabase-js";
 import { MOCK, mockSignUp } from "@/lib/mock";
-import { MOCK_COOKIE } from "@/lib/auth";
+import { MOCK_COOKIE, MOCK_COOKIE_OPTIONS } from "@/lib/auth";
 import { getSupabaseServiceEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -26,12 +26,7 @@ export async function POST(req: NextRequest) {
     try {
       const user = mockSignUp(email, password, full_name || null);
       const res = NextResponse.json({ user });
-      res.cookies.set(MOCK_COOKIE, user.id, {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
+      res.cookies.set(MOCK_COOKIE, user.id, MOCK_COOKIE_OPTIONS);
       return res;
     } catch (e: any) {
       return NextResponse.json({ error: friendlyError(e?.message) }, { status: 400 });

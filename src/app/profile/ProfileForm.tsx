@@ -9,14 +9,13 @@ import type { Profile } from "@/lib/types";
 import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
 import { trackEvent } from "@/lib/analytics";
+import { MOCK } from "@/lib/mock";
 
 const LANG_OPTIONS: { locale: Locale; flag: string; label: string }[] = [
   { locale: "kk", flag: "🇰🇿", label: "Қазақша" },
   { locale: "ru", flag: "🇷🇺", label: "Русский" },
   { locale: "en", flag: "🇬🇧", label: "English" },
 ];
-
-const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "1";
 
 const AGE_RANGES = ["Under 18", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
 const SKIN_TYPES = [

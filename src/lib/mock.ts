@@ -28,6 +28,22 @@ function store(): Store {
   return g.__skinxStore;
 }
 
+function defaultProfile(uid: string, fullName: string | null = null): Profile {
+  return {
+    id: uid,
+    full_name: fullName,
+    nickname: null,
+    avatar: "\u{1F464}",
+    age_range: null,
+    sex: null,
+    skin_type: null,
+    skin_texture: null,
+    risk_factors: [],
+    onboarded: false,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export function mockSignUp(email: string, password: string, fullName: string | null): User {
   const s = store();
   if (s.emails.has(email)) throw new Error("User already exists");
@@ -40,19 +56,7 @@ export function mockSignUp(email: string, password: string, fullName: string | n
   };
   s.users.set(id, user);
   s.emails.set(email, id);
-  s.profiles.set(id, {
-    id,
-    full_name: fullName,
-    nickname: null,
-    avatar: "👤",
-    age_range: null,
-    sex: null,
-    skin_type: null,
-    skin_texture: null,
-    risk_factors: [],
-    onboarded: false,
-    created_at: new Date().toISOString(),
-  });
+  s.profiles.set(id, defaultProfile(id, fullName));
   return { id, email, full_name: fullName };
 }
 
@@ -77,20 +81,7 @@ export function mockGetProfile(uid: string): Profile | null {
 
 export function mockUpsertProfile(uid: string, patch: Partial<Profile>): Profile {
   const s = store();
-  const prev =
-    s.profiles.get(uid) ?? {
-      id: uid,
-      full_name: null,
-      nickname: null,
-      avatar: "👤",
-      age_range: null,
-      sex: null,
-      skin_type: null,
-      skin_texture: null,
-      risk_factors: [],
-      onboarded: false,
-      created_at: new Date().toISOString(),
-    };
+  const prev = s.profiles.get(uid) ?? defaultProfile(uid);
   const next: Profile = { ...prev, ...patch, id: uid };
   s.profiles.set(uid, next);
   return next;

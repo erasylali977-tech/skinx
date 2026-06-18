@@ -4,6 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export const MOCK_COOKIE = "skinx_mock_uid";
 
+export const MOCK_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 60 * 24 * 30,
+};
+
 export async function getCurrentUser(): Promise<{
   id: string;
   email: string;
