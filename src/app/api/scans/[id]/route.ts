@@ -9,9 +9,12 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   if (MOCK) {
     const scan = mockGetScan(params.id);
-    if (!scan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!scan || scan.user_id !== user.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(scan);
   }
   try {
@@ -20,6 +23,7 @@ export async function GET(
       .from("scans")
       .select("*")
       .eq("id", params.id)
+      .eq("user_id", user.id)
       .maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -48,11 +52,13 @@ export async function DELETE(
       .from("scans")
       .select("image_path")
       .eq("id", params.id)
+      .eq("user_id", user.id)
       .maybeSingle();
-    if (scan?.image_path) {
+    if (!scan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (scan.image_path) {
       await supabase.storage.from("scans").remove([scan.image_path]);
     }
-    const { error } = await supabase.from("scans").delete().eq("id", params.id);
+    const { error } = await supabase.from("scans").delete().eq("id", params.id).eq("user_id", user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (e: any) {

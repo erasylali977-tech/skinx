@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
       return redirectToSignIn(userMessage);
     }
 
-    const destination = next.startsWith("/") ? `${publicOrigin}${next}` : next;
-    return NextResponse.redirect(destination);
+    const safePath = next.startsWith("/") && !next.startsWith("//") ? next : "/home";
+    return NextResponse.redirect(`${publicOrigin}${safePath}`);
   } catch (e: any) {
     console.error("[auth/callback] Unhandled:", e);
     return redirectToSignIn(e?.message || "Auth callback failed");
