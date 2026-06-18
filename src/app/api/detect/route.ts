@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 
 // Roboflow models per body zone
 const MODELS: Record<string, string> = {
@@ -15,6 +16,9 @@ export const runtime    = "nodejs";
 export const maxDuration = 10;
 
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   if (!KEY) {
     return NextResponse.json({ predictions: [] });
   }

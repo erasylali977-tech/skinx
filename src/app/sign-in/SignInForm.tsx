@@ -11,7 +11,8 @@ export function SignInForm() {
   const router = useRouter();
   const { t } = useI18n();
   const params = useSearchParams();
-  const next = params.get("next") || "/home";
+  const rawNext = params.get("next") || "/home";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/home";
 
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
